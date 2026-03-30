@@ -1,3 +1,12 @@
+import time
 import pyautogui
-pyautogui.moveTo(100, 100, duration=1)
 
+print("Starting in 10 seconds...")
+time.sleep(10)
+
+try: 
+    while True:
+        pyautogui.click()
+        time.sleep(0.1)  # Adjust the delay as needed
+except KeyboardInterrupt:
+    print("Script stopped by user.")
