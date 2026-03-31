@@ -1,54 +1,31 @@
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-import pandas as pd
 
 # 1. Setup Credentials
-CLIENT_ID = 'YOUR_CLIENT_ID'
-CLIENT_SECRET = 'YOUR_CLIENT_SECRET'
+CLIENT_ID = ''
+CLIENT_SECRET = ''
 
-client_credentials_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
-sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+auth_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
+sp = spotipy.Spotify(auth_manager=auth_manager)
 
-def get_chart_data(playlist_id):
-    # 2. Fetch the Playlist (e.g., Global Top 50)
-    results = sp.playlist_items(playlist_id)
+def print_top_charts(playlist_id, count=25):
+    # Fetch only the number of tracks requested (max 50 for this call)
+    results = sp.playlist_items(playlist_id, limit=count)
     tracks = results['items']
     
-    rows = []
+    print(f"{'Rank':<5} | {'Artist':<20} | {'Track Name'}")
+    print("-" * 60)
     
     for idx, item in enumerate(tracks):
         track = item['track']
-        track_id = track['id']
-        artist_id = track['artists'][0]['id']
+        artist_name = track['artists'][0]['name']
+        track_name = track['name']
         
-        # 3. Fetch Artist Info for Genres
-        # (Note: API changes in 2026 require individual fetches for some objects)
-        artist_info = sp.artist(artist_id)
-        genres = ", ".join(artist_info['genres'])
-        
-        # 4. Fetch Audio Statistics (The "ML" Data)
-        audio_features = sp.audio_features(track_id)[0]
-        
-        # Combine into a dictionary
-        song_data = {
-            'position': idx + 1,
-            'title': track['name'],
-            'artist': track['artists'][0]['name'],
-            'genres': genres,
-            'popularity': track['popularity'],
-            'duration_ms': track['duration_ms'],
-            'danceability': audio_features['danceability'],
-            'energy': audio_features['energy'],
-            'valence': audio_features['valence'],
-            'tempo': audio_features['tempo']
-        }
-        rows.append(song_data)
-    
-    return pd.DataFrame(rows)
+        # Using f-strings to align the columns neatly in the terminal
+        print(f"{idx + 1:<5} | {artist_name[:20]:<20} | {track_name}")
 
-# The ID for "Global Top 50" is 37i9dQZEVXbMDoJ6U7CjYI
-df = get_chart_data('37i9dQZEVXbMDoJ6U7CjYI')
+# Global Top 50 ID
+CHART_ID = '37i9dQZEVXbMDoJ6U7CjYI'
 
-# 5. Export to CSV
-df.to_csv('spotify_top_50_data.csv', index=False)
-print("Data exported successfully to spotify_top_50_data.csv")
+# Change 'count' to any number between 1 and 50
+print_top_charts(CHART_ID, count=25)
