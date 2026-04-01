@@ -1,8 +1,8 @@
 import time
 import pyautogui
 
-print("Starting in 10 seconds...")
-time.sleep(10)
+print("Starting in 5 seconds...")
+time.sleep(5)
 
 try: 
     while True:
