@@ -14,6 +14,7 @@ function runPythonScript(scriptName, args = []) {
   return new Promise((resolve, reject) => {
     const pythonPath = path.join(__dirname, 'stock_fetcher.py');
     const python = spawn('python', [pythonPath, scriptName, ...args], {
+      cwd: __dirname,
       timeout: 60000 // 60 second timeout
     });
     
@@ -23,16 +24,19 @@ function runPythonScript(scriptName, args = []) {
 
     python.stdout.on('data', (data) => {
       dataString += data.toString();
+      console.log('Python stdout:', data.toString().slice(0, 100));
     });
 
     python.stderr.on('data', (data) => {
       errorString += data.toString();
+      console.log('Python stderr:', data.toString().slice(0, 100));
     });
 
     python.on('close', (code) => {
       if (hasResolved) return;
       hasResolved = true;
       
+      console.log(`Python process closed with code ${code}`);
       if (code !== 0) {
         reject(new Error(`Python error (code ${code}): ${errorString}`));
       } else if (!dataString.trim()) {
@@ -49,6 +53,7 @@ function runPythonScript(scriptName, args = []) {
     python.on('error', (err) => {
       if (hasResolved) return;
       hasResolved = true;
+      console.log('Python spawn error:', err.message);
       reject(new Error(`Failed to spawn Python process: ${err.message}`));
     });
 
@@ -56,6 +61,7 @@ function runPythonScript(scriptName, args = []) {
     const timer = setTimeout(() => {
       if (!hasResolved) {
         hasResolved = true;
+        console.log('Python script timeout');
         python.kill();
         reject(new Error('Python script execution timeout'));
       }
@@ -72,12 +78,16 @@ app.get('/', (req, res) => {
 
 // API Endpoints
 app.get('/api/top-stocks', async (req, res) => {
+  console.log('Received request for /api/top-stocks');
   try {
     const limit = req.query.limit || 50;
     const delay = req.query.delay || 0.7;
+    console.log(`Running Python script with limit=${limit}, delay=${delay}`);
     const data = await runPythonScript('top-stocks', [limit.toString(), delay.toString()]);
+    console.log('Python script completed successfully');
     res.json(data);
   } catch (error) {
+    console.error('Error in /api/top-stocks:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
