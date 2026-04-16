@@ -151,7 +151,3 @@ Edit `frontend/src/App.css` to customize colors, spacing, and layouts.
 - [ ] Portfolio tracking
 - [ ] Advanced technical indicators (RSI, MACD, Bollinger Bands)
 - [ ] User authentication and settings persistence
-
-## License
-
-MIT
