@@ -14,15 +14,18 @@ router = APIRouter(prefix="/api", tags=["stocks"])
 
 @router.get("/top-stocks", response_model=TopStocksResponse)
 async def get_top_stocks(
-    limit: int = Query(50, ge=10, le=500),
-    delay: float = Query(0.7, ge=0.1, le=5.0)
+    limit: int = Query(10, ge=5, le=100),
+    delay: float = Query(0.3, ge=0.1, le=2.0)
 ):
     """
     Get top 5 performing stocks.
     
+    RATE LIMITING: Max 10 symbols analyzed (10 + 5 OHLC = 15 requests max).
+    This ensures compliance with 20 requests/minute global limit.
+    
     Args:
-        limit: Number of stocks to analyze (10-500)
-        delay: Delay between API calls in seconds (0.1-5.0)
+        limit: Number of stocks to analyze (5-100, capped at 10)
+        delay: Delay between API calls in seconds (0.1-2.0)
     
     Returns:
         TopStocksResponse with top 5 stocks and OHLC data
@@ -31,18 +34,65 @@ async def get_top_stocks(
 
 
 @router.get("/watchlist", response_model=WatchlistResponse)
-async def get_watchlist(delay: float = Query(0.5, ge=0.1, le=5.0)):
+async def get_watchlist(delay: float = Query(0.3, ge=0.1, le=2.0)):
     """
     Get watchlist performance data.
     
+    RATE LIMITING: Fetches 5 watchlist symbols (5 + 5 OHLC = 10 requests max).
+    This ensures compliance with 20 requests/minute global limit.
+    
     Args:
-        delay: Delay between API calls in seconds (0.1-5.0)
+        delay: Delay between API calls in seconds (0.1-2.0)
     
     Returns:
         WatchlistResponse with watchlist stocks and OHLC data
     """
     return StockFetcher.fetch_watchlist(delay=delay)
 
+@router.get("/quick-watchlist")
+async def get_quick_watchlist(delay: float = Query(0.2, ge=0.1, le=1.0)):
+    """
+    Get watchlist performance data quickly (without OHLC data).
+    
+    RATE LIMITING: Fetches only 5 watchlist symbols (5 requests only).
+    No OHLC data means this completes in 3-5 seconds.
+    This is the fastest endpoint for quick updates.
+    
+    Args:
+        delay: Delay between API calls in seconds (0.1-1.0)
+    
+    Returns:
+        Quick watchlist with symbols and performance metrics only
+    """
+    import time
+    from datetime import datetime
+    from app.services.stock_fetcher import StockFetcher, WATCHLIST
+    
+    # Check cache first
+    cache_key = StockFetcher._get_cache_key("quick_watchlist", "", "")
+    cached = StockFetcher._get_cached_response(cache_key)
+    if cached:
+        return cached
+    
+    performance = []
+    
+    for i, sym in enumerate(WATCHLIST, 1):
+        perf = StockFetcher.get_stock_performance(sym)
+        if perf:
+            performance.append(perf)
+        time.sleep(delay)
+    
+    performance.sort(key=lambda x: x["percentage_change"], reverse=True)
+    
+    result = {
+        "watchlist": performance,
+        "ohlc_data": {},  # Empty for quick endpoint
+        "fetched_at": datetime.now().isoformat()
+    }
+    
+    # Cache the result
+    StockFetcher._set_cache(cache_key, result)
+    return result
 
 @router.get("/stock/{symbol}", response_model=StockDetail)
 async def get_stock_data(

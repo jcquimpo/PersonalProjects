@@ -27,18 +27,26 @@ function App() {
   const [activeTab, setActiveTab] = useState('top'); // 'top' or 'watchlist'
   const [apiHealth, setApiHealth] = useState(null);
 
-  // Check API health on mount
+  // Check API health on mount and periodically
   useEffect(() => {
     const checkHealth = async () => {
       try {
         const health = await api.checkHealth();
+        console.log('[HEALTH CHECK]', health);
         setApiHealth(health);
       } catch (err) {
-        console.error('API health check failed:', err);
+        console.error('[HEALTH CHECK FAILED]', err.message);
         setApiHealth({ status: 'error', message: err.message });
       }
     };
+
+    // Check health immediately
     checkHealth();
+
+    // Check health every 30 seconds
+    const healthCheckInterval = setInterval(checkHealth, 30000);
+
+    return () => clearInterval(healthCheckInterval);
   }, []);
 
   // Update selected chart data when stocks or tab change

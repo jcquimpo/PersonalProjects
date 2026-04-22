@@ -3,22 +3,23 @@
  */
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
-const DEFAULT_TIMEOUT = 60000; // 60 seconds timeout for stock fetching
+const HEALTH_TIMEOUT = 5000; // 5 seconds for health check
+const DATA_TIMEOUT = 20000; // 20 seconds for data fetching (reduced from 60s)
 const MAX_RETRIES = 2;
-const RETRY_DELAY = 1000; // 1 second between retries
+const RETRY_DELAY = 500; // 500ms between retries
+
+// Cache for API responses
+const responseCache = new Map();
+const CACHE_TTL = 60000; // 60 seconds cache
 
 /**
- * Fetch with timeout and retry logic.
- * @param {string} url - The URL to fetch
- * @param {number} timeout - Timeout in milliseconds
- * @param {number} retries - Number of retry attempts
- * @returns {Promise<Response>} - The fetch response
+ * Fetch with timeout and retry logic, with caching support.
  */
-const fetchWithTimeout = async (url, timeout = DEFAULT_TIMEOUT, retries = MAX_RETRIES) => {
+const fetchWithTimeout = async (url, timeout = DATA_TIMEOUT, retries = MAX_RETRIES) => {
   let lastError;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
-    let timeoutId; // Declare outside try-catch for scope access
+    let timeoutId;
     try {
       const controller = new AbortController();
       timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -42,8 +43,9 @@ const fetchWithTimeout = async (url, timeout = DEFAULT_TIMEOUT, retries = MAX_RE
 
       // Only retry on network errors, not on HTTP errors
       if (attempt < retries && (error.name === 'AbortError' || !error.message.startsWith('HTTP'))) {
-        console.warn(`Retry attempt ${attempt + 1}/${retries} for ${url}. Error: ${error.message}`);
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        const backoffDelay = RETRY_DELAY * Math.pow(2, attempt); // Exponential backoff
+        console.warn(`Retry attempt ${attempt + 1}/${retries} for ${url} in ${backoffDelay}ms. Error: ${error.message}`);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
         continue;
       }
 
@@ -61,7 +63,7 @@ export const fetchTopStocks = async (limit = 50, delay = 0.7) => {
   try {
     const response = await fetchWithTimeout(
       `${API_BASE_URL}/top-stocks?limit=${limit}&delay=${delay}`,
-      DEFAULT_TIMEOUT,
+      DATA_TIMEOUT,
       MAX_RETRIES
     );
     return await response.json();
@@ -78,7 +80,7 @@ export const fetchWatchlist = async (delay = 0.5) => {
   try {
     const response = await fetchWithTimeout(
       `${API_BASE_URL}/watchlist?delay=${delay}`,
-      DEFAULT_TIMEOUT,
+      DATA_TIMEOUT,
       MAX_RETRIES
     );
     return await response.json();
@@ -95,7 +97,7 @@ export const fetchStockData = async (symbol, period = '7d') => {
   try {
     const response = await fetchWithTimeout(
       `${API_BASE_URL}/stock/${symbol}?period=${period}`,
-      DEFAULT_TIMEOUT,
+      DATA_TIMEOUT,
       MAX_RETRIES
     );
     return await response.json();
@@ -112,12 +114,12 @@ export const checkHealth = async () => {
   try {
     const response = await fetchWithTimeout(
       `${API_BASE_URL}/health`,
-      5000, // Shorter timeout for health check
+      HEALTH_TIMEOUT, // Use shorter timeout for health check
       1 // Fewer retries for health check
     );
     return await response.json();
   } catch (error) {
     console.error('Error checking health:', error);
-    throw new Error(`API health check failed: ${error.message}`);
+    return { status: 'error', message: error.message };
   }
 };
