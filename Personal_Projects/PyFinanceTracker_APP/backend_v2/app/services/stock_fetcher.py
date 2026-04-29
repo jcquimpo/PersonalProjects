@@ -8,7 +8,10 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
 import logging
+from .mock_data import MOCK_WATCHLIST, MOCK_OHLC, MOCK_TOP_STOCKS
 from threading import Lock, Semaphore
+import signal
+from contextlib import contextmanager
 
 # Configure logging
 logging.basicConfig(
@@ -17,8 +20,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Watchlist configuration
-WATCHLIST = ["AAPL", "NVDA", "MSFT", "META", "GOOGL"]
+# Watchlist configuration - reduced to minimize API calls
+WATCHLIST = ["AAPL", "MSFT", "GOOGL"]  # Reduced from 5 to 3 symbols
 SYMBOL_NAMES = {
     "AAPL": "Apple Inc.",
     "NVDA": "NVIDIA Corporation",
@@ -35,11 +38,20 @@ CACHE_TIMEOUT = 300  # 5 minutes
 MAX_REQUESTS_PER_MINUTE = 20
 REQUEST_QUEUE_LOCK = Lock()
 REQUEST_TIMES = []  # Track request timestamps for rate limiting
-GLOBAL_REQUEST_SEMAPHORE = Semaphore(3)  # Allow max 3 concurrent requests
+GLOBAL_REQUEST_SEMAPHORE = Semaphore(1)  # Allow only 1 concurrent request to yfinance
+LAST_REQUEST_TIME = 0.0  # Track time of last request for inter-request delay
+MIN_REQUEST_DELAY = 2.0  # Minimum 2 seconds between yfinance requests (reduced from 3s)
+FETCH_TIMEOUT = 18.0  # Overall fetch timeout in seconds (leaves 2s buffer from 20s client timeout)
 
 # Response cache - avoid re-fetching same data
-RESPONSE_CACHE = {}
+RESPONSE_CACHE = {}  # {cache_key: (data, timestamp)}
+RESPONSE_HISTORY = {}  # {cache_key: [(data, timestamp), ...]} - keep last 5 successful responses
 CACHE_LOCK = Lock()
+
+
+class TimeoutException(Exception):
+    """Exception raised when operation exceeds timeout."""
+    pass
 
 
 class StockFetcher:
@@ -47,11 +59,20 @@ class StockFetcher:
 
     @staticmethod
     def _check_rate_limit():
-        """Check and enforce global rate limit (20 requests per minute)."""
-        global REQUEST_TIMES
+        """Check and enforce global rate limit with inter-request delays."""
+        global REQUEST_TIMES, LAST_REQUEST_TIME
         
         with REQUEST_QUEUE_LOCK:
             current_time = time.time()
+            
+            # Enforce minimum delay between requests to yfinance
+            time_since_last = current_time - LAST_REQUEST_TIME
+            if time_since_last < MIN_REQUEST_DELAY:
+                wait_time = MIN_REQUEST_DELAY - time_since_last
+                logger.debug(f"Inter-request delay: sleeping {wait_time:.2f}s...")
+                time.sleep(wait_time)
+                current_time = time.time()
+            
             # Remove timestamps older than 60 seconds
             REQUEST_TIMES = [t for t in REQUEST_TIMES if current_time - t < 60]
             
@@ -66,6 +87,7 @@ class StockFetcher:
                     return StockFetcher._check_rate_limit()
             
             # Record this request
+            LAST_REQUEST_TIME = current_time
             REQUEST_TIMES.append(current_time)
             logger.debug(f"Rate limit check passed. Requests in last minute: {len(REQUEST_TIMES)}/{MAX_REQUESTS_PER_MINUTE}")
 
@@ -75,9 +97,10 @@ class StockFetcher:
         return f"{cache_type}:{symbol}:{period}".lower()
 
     @staticmethod
-    def _get_cached_response(cache_key: str) -> Optional[Dict]:
-        """Get cached response if available and not expired."""
+    def _get_cached_response(cache_key: str, fallback_to_history: bool = True) -> Optional[Dict]:
+        """Get cached response if available and not expired. Fallback to history if enabled."""
         with CACHE_LOCK:
+            # Try current cache first
             if cache_key in RESPONSE_CACHE:
                 cached_data, timestamp = RESPONSE_CACHE[cache_key]
                 age = (datetime.now() - timestamp).total_seconds()
@@ -87,24 +110,48 @@ class StockFetcher:
                 else:
                     logger.debug(f"Cache expired for {cache_key} (age: {age:.1f}s)")
                     del RESPONSE_CACHE[cache_key]
+            
+            # If fallback enabled and current cache miss, check history
+            if fallback_to_history and cache_key in RESPONSE_HISTORY and RESPONSE_HISTORY[cache_key]:
+                old_data, old_timestamp = RESPONSE_HISTORY[cache_key][-1]  # Get most recent
+                age = (datetime.now() - old_timestamp).total_seconds()
+                logger.warning(f"Cache miss, fallback to history for {cache_key} (age: {age:.1f}s)")
+                # Add flag to indicate this is cached/stale data
+                if isinstance(old_data, dict):
+                    old_data["is_cached"] = True
+                    old_data["cached_age_seconds"] = int(age)
+                return old_data
+            
             return None
 
     @staticmethod
     def _set_cache(cache_key: str, data: Dict):
-        """Store response in cache."""
+        """Store response in cache and keep history of last 5 successful responses."""
         with CACHE_LOCK:
-            RESPONSE_CACHE[cache_key] = (data, datetime.now())
-            logger.debug(f"Cache set for {cache_key}")
+            timestamp = datetime.now()
+            RESPONSE_CACHE[cache_key] = (data, timestamp)
+            
+            # Keep history of last 5 responses
+            if cache_key not in RESPONSE_HISTORY:
+                RESPONSE_HISTORY[cache_key] = []
+            
+            RESPONSE_HISTORY[cache_key].append((data.copy(), timestamp))
+            
+            # Keep only last 5 responses
+            if len(RESPONSE_HISTORY[cache_key]) > 5:
+                RESPONSE_HISTORY[cache_key] = RESPONSE_HISTORY[cache_key][-5:]
+            
+            logger.debug(f"Cache set for {cache_key} (history size: {len(RESPONSE_HISTORY[cache_key])})")
 
     @staticmethod
-    def _retry_with_backoff(func, max_retries: int = 3, initial_delay: float = 1.0, backoff_factor: float = 2.0):
+    def _retry_with_backoff(func, max_retries: int = 1, initial_delay: float = 0.5, backoff_factor: float = 2.0):
         """
         Retry a function with exponential backoff.
         Handles rate limiting (429) errors with increased backoff.
         
         Args:
             func: Function to retry
-            max_retries: Maximum number of retry attempts
+            max_retries: Maximum number of retry attempts (reduced to 1 for faster fallback to mock data)
             initial_delay: Initial delay in seconds
             backoff_factor: Multiply delay by this factor after each retry
             
@@ -131,14 +178,14 @@ class StockFetcher:
                     logger.warning(f"Failed after {max_retries + 1} attempts. Last error: {e}")
                     return None
                 
-                # Increase delay for rate limit errors
+                # For rate limits, give up quickly to show mock data faster
                 if is_rate_limit:
-                    # For rate limiting, use longer delays
-                    delay = max(5.0, initial_delay * (backoff_factor ** (attempt + 2)))
-                    logger.warning(f"Rate limit hit (429). Attempt {attempt + 1} failed. Retrying in {delay}s... Error: {e}")
-                else:
-                    logger.info(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
-                    delay *= backoff_factor
+                    logger.warning(f"Rate limit hit (429). Giving up quickly to show demo data. Error: {e}")
+                    return None
+                
+                # For other errors, retry with backoff
+                logger.info(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
+                delay *= backoff_factor
                 
                 time.sleep(delay)
 
@@ -168,7 +215,7 @@ class StockFetcher:
             # Validate response
             ticker = yf.Ticker(symbol)
             logger.debug(f"Fetching OHLC for {symbol} with period={period}")
-            df = ticker.history(period=period, timeout=10)  # Add timeout
+            df = ticker.history(period=period, timeout=20)  # Increased timeout from 10 to 20 seconds
             
             logger.debug(f"{symbol}: Got {len(df) if df is not None else 0} OHLC records")
             
@@ -223,7 +270,7 @@ class StockFetcher:
             ticker = yf.Ticker(symbol)
             
             # Try 2 days first (market open/close comparison)
-            hist = ticker.history(period="2d", interval="1d", timeout=10)
+            hist = ticker.history(period="2d", interval="1d", timeout=20)  # Increased timeout from 10 to 20
             logger.debug(f"{symbol}: Fetched 2d history - {len(hist)} records")
             
             # If we have at least 2 records, use them
@@ -237,7 +284,7 @@ class StockFetcher:
             else:
                 # Fallback: try 5d history if 2d not available (market might be closed)
                 logger.debug(f"{symbol}: Fallback to 5d history")
-                hist = ticker.history(period="5d", interval="1d", timeout=10)
+                hist = ticker.history(period="5d", interval="1d", timeout=20)  # Increased timeout
                 logger.debug(f"{symbol}: Fetched 5d history - {len(hist)} records")
                 
                 if hist is None or hist.empty or len(hist) < 2:
@@ -289,10 +336,11 @@ class StockFetcher:
         """
         Fetch top 5 stocks by daily percentage move.
         
-        Note: With rate limiting to 20 requests/minute and 5 OHLC requests,
-        this method fetches maximum 10 symbols (10 + 5 OHLC = 15 requests).
+        Note: This method uses a quick fallback to mock data if live data
+        takes too long, to avoid exceeding client timeout (20s).
         """
         logger.info(f"Fetching top stocks (limit={limit}, delay={delay})")
+        start_time = time.time()
         
         # Check cache first
         cache_key = cls._get_cache_key("top_stocks", "", "")
@@ -302,24 +350,23 @@ class StockFetcher:
         
         performance = []
         
-        # Limit to maximum 10 symbols to stay within 20 requests/minute budget
-        # (10 performance requests + 5 OHLC requests = 15 requests)
-        safe_limit = min(limit, 10)
-        logger.debug(f"Safe limit: {safe_limit} symbols (20 requests/minute budget)")
+        # Limit to maximum 5 symbols to avoid rate limiting
+        safe_limit = min(limit, 5)
+        logger.debug(f"Safe limit: {safe_limit} symbols (rate limiting: {MIN_REQUEST_DELAY}s between requests)")
         
-        # Try to get S&P 500 symbols, fallback to default list
-        try:
-            from pytickersymbols import PyTickerSymbols
-            stock_data = PyTickerSymbols()
-            symbol_list = list(stock_data.get_sp_500_nyc_yahoo_tickers())[:safe_limit]
-            logger.info(f"Fetched {len(symbol_list)} S&P 500 symbols")
-        except Exception as e:
-            logger.warning(f"Failed to get S&P 500 symbols: {e}. Using default list.")
-            symbol_list = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META", "NFLX"][:safe_limit]
+        # Use hardcoded symbol list - pytickersymbols is unreliable and slow
+        symbol_list = ["AAPL", "MSFT", "GOOGL", "TSLA", "AMZN"][:safe_limit]
+        logger.debug(f"Using symbol list: {symbol_list}")
         
-        # Fetch performance for each symbol
-        logger.info(f"Fetching performance for {len(symbol_list)} symbols with {delay}s delay...")
+        # Fetch performance for each symbol with timeout check
+        logger.info(f"Fetching performance for {len(symbol_list)} symbols...")
         for i, sym in enumerate(symbol_list, 1):
+            # Check if we're approaching the overall timeout
+            elapsed = time.time() - start_time
+            if elapsed > FETCH_TIMEOUT - 5:  # Leave 5s buffer for OHLC fetching
+                logger.warning(f"Approaching timeout ({elapsed:.1f}s elapsed). Using mock data.")
+                return cls._get_mock_top_stocks()
+            
             logger.debug(f"[{i}/{len(symbol_list)}] Fetching {sym}...")
             perf = cls.get_stock_performance(sym)
             if perf:
@@ -328,20 +375,29 @@ class StockFetcher:
             else:
                 logger.debug(f"[{i}/{len(symbol_list)}] {sym}: Failed")
             
-            # Use consistent delay for even request spacing
-            time.sleep(delay)
+            # Use minimal delay between requests
+            time.sleep(0.5)
         
         # Sort and get top 5
         performance.sort(key=lambda x: x["percentage_change"], reverse=True)
         top_5 = performance[:5]
         logger.info(f"Found {len(top_5)} valid stocks, fetching OHLC data...")
         
-        # Fetch OHLC data for top 5 (5 requests max)
+        # If no valid top stocks found, use mock data
+        if not top_5:
+            logger.warning("No valid stocks obtained - using mock data for demonstration")
+            return cls._get_mock_top_stocks()
+        
+        # Fetch OHLC data for top 5 (5 requests max) - with timeout check
         ohlc_data = {}
         for i, stock in enumerate(top_5, 1):
+            elapsed = time.time() - start_time
+            if elapsed > FETCH_TIMEOUT - 2:  # Abort if running out of time
+                logger.warning(f"Running out of time ({elapsed:.1f}s). Skipping OHLC for remaining stocks.")
+                break
+            
             ohlc_data[stock["symbol"]] = cls.get_ohlc_data(stock["symbol"], "7d")
             logger.debug(f"[{i}/{len(top_5)}] {stock['symbol']}: OHLC fetched")
-            time.sleep(0.2)  # Small delay between OHLC requests
         
         result = {
             "top_stocks": top_5,
@@ -351,7 +407,26 @@ class StockFetcher:
         
         # Cache the result
         cls._set_cache(cache_key, result)
-        logger.info(f"Top stocks fetch complete. Returning {len(top_5)} stocks.")
+        elapsed = time.time() - start_time
+        logger.info(f"Top stocks fetch complete in {elapsed:.1f}s. Returning {len(top_5)} stocks.")
+        return result
+    
+    @classmethod
+    def _get_mock_top_stocks(cls) -> Dict:
+        """Return mock data for top stocks as fast fallback."""
+        top_5 = MOCK_TOP_STOCKS[:5]
+        ohlc_data = {}
+        for stock in top_5:
+            ohlc_data[stock["symbol"]] = MOCK_OHLC.get(stock["symbol"], [])
+        
+        result = {
+            "top_stocks": top_5,
+            "ohlc_data": ohlc_data,
+            "fetched_at": datetime.now().isoformat(),
+            "is_demo_data": True,
+            "note": "Using demonstration data - Yahoo Finance rate limited or timed out"
+        }
+        logger.info("Top stocks using mock data (due to rate limiting or timeout)")
         return result
 
     @classmethod
@@ -359,10 +434,11 @@ class StockFetcher:
         """
         Fetch watchlist performance data.
         
-        Note: This method uses 5 performance requests + 5 OHLC requests = 10 total requests,
-        which is well within the 20 requests/minute budget.
+        Note: This method uses a quick fallback to mock data if live data
+        takes too long, to avoid exceeding client timeout (20s).
         """
         logger.info(f"Fetching watchlist with {len(WATCHLIST)} symbols...")
+        start_time = time.time()
         
         # Check cache first
         cache_key = cls._get_cache_key("watchlist", "", "")
@@ -373,6 +449,12 @@ class StockFetcher:
         performance = []
         
         for i, sym in enumerate(WATCHLIST, 1):
+            # Check if we're approaching the overall timeout
+            elapsed = time.time() - start_time
+            if elapsed > FETCH_TIMEOUT - 5:  # Leave 5s buffer for OHLC fetching
+                logger.warning(f"Approaching timeout ({elapsed:.1f}s elapsed). Using mock data.")
+                return cls._get_mock_watchlist()
+            
             perf = cls.get_stock_performance(sym)
             if perf:
                 performance.append(perf)
@@ -380,17 +462,26 @@ class StockFetcher:
             else:
                 logger.debug(f"[{i}/{len(WATCHLIST)}] {sym}: Failed")
             
-            time.sleep(delay)
+            time.sleep(0.5)
         
         performance.sort(key=lambda x: x["percentage_change"], reverse=True)
         
-        # Fetch OHLC data for watchlist (5 requests max)
+        # If no valid performance data, use mock data (for demonstration)
+        if not performance:
+            logger.warning("No performance data obtained - using mock data for demonstration")
+            return cls._get_mock_watchlist()
+        
+        # Fetch OHLC data for watchlist (5 requests max) - with timeout check
         logger.info("Fetching OHLC data for watchlist...")
         ohlc_data = {}
         for i, sym in enumerate(WATCHLIST, 1):
+            elapsed = time.time() - start_time
+            if elapsed > FETCH_TIMEOUT - 2:  # Abort if running out of time
+                logger.warning(f"Running out of time ({elapsed:.1f}s). Skipping OHLC for remaining stocks.")
+                break
+            
             ohlc_data[sym] = cls.get_ohlc_data(sym, "7d")
             logger.debug(f"[{i}/{len(WATCHLIST)}] {sym}: OHLC fetched")
-            time.sleep(0.2)  # Small delay between OHLC requests
         
         result = {
             "watchlist": performance,
@@ -400,7 +491,24 @@ class StockFetcher:
         
         # Cache the result
         cls._set_cache(cache_key, result)
-        logger.info("Watchlist fetch complete.")
+        elapsed = time.time() - start_time
+        logger.info(f"Watchlist fetch complete in {elapsed:.1f}s.")
+        return result
+    
+    @classmethod
+    def _get_mock_watchlist(cls) -> Dict:
+        """Return mock data for watchlist as fast fallback."""
+        watchlist = MOCK_WATCHLIST
+        ohlc_data = MOCK_OHLC
+        
+        result = {
+            "watchlist": watchlist,
+            "ohlc_data": ohlc_data,
+            "fetched_at": datetime.now().isoformat(),
+            "is_demo_data": True,
+            "note": "Using demonstration data - Yahoo Finance rate limited or timed out"
+        }
+        logger.info("Watchlist using mock data (due to rate limiting or timeout)")
         return result
 
     @classmethod
