@@ -36,6 +36,16 @@ const fetchWithTimeout = async (url, timeout = DATA_TIMEOUT, retries = MAX_RETRI
       clearTimeout(timeoutId);
       lastError = error;
 
+      // Ignore extension-related errors
+      if (
+        error.message &&
+        (error.message.includes('Extension context invalidated') ||
+          error.message.includes('port closed'))
+      ) {
+        // These are harmless extension errors, ignore them
+        continue;
+      }
+
       // Check if it's a timeout or abort error
       if (error.name === 'AbortError') {
         lastError = new Error(`Request timeout after ${timeout}ms`);

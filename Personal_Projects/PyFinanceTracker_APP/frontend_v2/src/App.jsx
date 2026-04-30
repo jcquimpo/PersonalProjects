@@ -9,6 +9,53 @@ import { useStockData } from './hooks/useStockData';
 import * as api from './services/api';
 import './styles/App.css';
 
+// Error Boundary to catch and suppress extension-related errors
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, errorMessage: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    // Suppress extension-related errors
+    if (
+      error &&
+      error.message &&
+      (error.message.includes('Extension context') ||
+        error.message.includes('port closed') ||
+        error.message.includes('message channel'))
+    ) {
+      console.debug('[Extension Error - Boundary Suppressed]', error.message);
+      return { hasError: false };
+    }
+    return { hasError: true, errorMessage: error?.message };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    // Log to console for debugging
+    if (error.message && error.message.includes('Extension')) {
+      console.debug('[Extension Error Caught]', error.message);
+    } else {
+      console.error('Error caught by boundary:', error, errorInfo);
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '20px', color: 'red' }}>
+          <h2>Something went wrong</h2>
+          <details style={{ whiteSpace: 'pre-wrap' }}>
+            {this.state.errorMessage}
+          </details>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function App() {
   const {
     topStocks,
@@ -35,8 +82,20 @@ function App() {
         console.log('[HEALTH CHECK]', health);
         setApiHealth(health);
       } catch (err) {
-        console.error('[HEALTH CHECK FAILED]', err.message);
-        setApiHealth({ status: 'error', message: err.message });
+        // Suppress extension errors in health check
+        if (
+          err &&
+          err.message &&
+          !(
+            err.message.includes('Extension context') ||
+            err.message.includes('port closed')
+          )
+        ) {
+          console.error('[HEALTH CHECK FAILED]', err.message);
+          setApiHealth({ status: 'error', message: err.message });
+        } else {
+          console.debug('[Health check - Extension error suppressed]');
+        }
       }
     };
 
@@ -76,28 +135,29 @@ function App() {
   };
 
   return (
-    <div className="app">
-      {/* Header */}
-      <header className="app-header">
-        <div className="header-content">
-          <h1>📈 Stock Dashboard</h1>
-          <p>Real-time stock tracking and analysis</p>
-        </div>
-        <div className="header-status">
-          {apiHealth?.status === 'ok' ? (
-            <span className="status-badge success">● API Connected</span>
-          ) : (
-            <span className="status-badge error">● API Disconnected</span>
-          )}
-        </div>
-      </header>
+    <ErrorBoundary>
+      <div className="app">
+        {/* Header */}
+        <header className="app-header">
+          <div className="header-content">
+            <h1>📈 Stock Dashboard</h1>
+            <p>Real-time stock tracking and analysis</p>
+          </div>
+          <div className="header-status">
+            {apiHealth?.status === 'ok' ? (
+              <span className="status-badge success">● API Connected</span>
+            ) : (
+              <span className="status-badge error">● API Disconnected</span>
+            )}
+          </div>
+        </header>
 
-      {/* Error Message */}
-      {error && (
-        <div className="error-banner">
-          <span>⚠️ {error}</span>
-        </div>
-      )}
+        {/* Error Message */}
+        {error && (
+          <div className="error-banner">
+            <span>⚠️ {error}</span>
+          </div>
+        )}
 
       {/* Main Content */}
       <div className="dashboard-container">
@@ -161,7 +221,8 @@ function App() {
         <p>Last updated: {new Date().toLocaleTimeString()}</p>
         <p>Stock data powered by yfinance</p>
       </footer>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
 
