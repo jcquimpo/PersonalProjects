@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frontend-Backend Diagnostic</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        h1 { color: #4ec9b0; }
+        h2 { color: #569cd6; margin-top: 20px; }
+        .status { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px;
+            margin: 10px 0;
+            padding: 10px;
+            background: #1e1e1e;
+            border-radius: 4px;
+        }
+        .status-ok { border-left: 4px solid #4ec9b0; }
+        .status-fail { border-left: 4px solid #f48771; }
+        .status-pending { border-left: 4px solid #dcdcaa; }
+        .icon { font-size: 18px; }
+        .code {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 10px 0;
+            border: 1px solid #444;
+        }
+        button {
+            background: #0e639c;
+            color: #e0e0e0;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: monospace;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+        .warning {
+            background: #332200;
+            border-left: 4px solid #dcdcaa;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .error {
+            background: #330000;
+            border-left: 4px solid #f48771;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .output {
+            background: #1e1e1e;
+            color: #4ec9b0;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Frontend-Backend Diagnostic Tool</h1>
+        <p>This tool helps identify and fix API connection issues.</p>
+
+        <h2>Configuration Status</h2>
+        <div class="status status-pending">
+            <span class="icon">📋</span>
+            <span>Checking configuration files...</span>
+        </div>
+
+        <div id="config-status"></div>
+
+        <h2>Connection Tests</h2>
+        <button onclick="testBackendDirect()">Test Backend Direct (localhost:5000)</button>
+        <button onclick="testBackendViaProxy()">Test Backend Via Proxy (/api)</button>
+        <button onclick="testHealth()">Test Health Check</button>
+
+        <div id="test-output" class="output" style="display: none;"></div>
+
+        <h2>Configuration Files</h2>
+        
+        <h3>.env.local (should use /api for proxy)</h3>
+        <div class="code">
+REACT_APP_API_URL=/api
+        </div>
+
+        <h3>setupProxy.js (should exist in src/)</h3>
+        <div class="code">
+const { createProxyMiddleware } = require('http-proxy-middleware');
+
+module.exports = function(app) {
+  app.use(
+    '/api',
+    createProxyMiddleware({
+      target: 'http://localhost:5000',
+      changeOrigin: true,
+    })
+  );
+};
+        </div>
+
+        <h3>package.json (must have http-proxy-middleware)</h3>
+        <div class="code">
+"dependencies": {
+  ...
+  "http-proxy-middleware": "^2.0.6"
+}
+        </div>
+
+        <h2>Steps to Fix</h2>
+        <ol>
+            <li><strong>Install missing package:</strong>
+                <div class="code">npm install</div>
+            </li>
+            <li><strong>Stop npm start (if running)</strong>
+                <div class="warning">⚠️  You must restart npm start after installing the package</div>
+            </li>
+            <li><strong>Start fresh:</strong>
+                <div class="code">npm start</div>
+                <p style="color: #dcdcaa;">npm start will restart in dev mode with proxy enabled</p>
+            </li>
+            <li><strong>Verify API is connected:</strong>
+                <p>Status badge should show "● API Connected" (green)</p>
+            </li>
+        </ol>
+
+        <h2>Troubleshooting</h2>
+
+        <h3>If Still Disconnected After Steps Above:</h3>
+        <div class="warning">
+            <strong>✓ Make sure backend is running:</strong>
+            <div class="code">cd backend_v2<br/>python main.py</div>
+            <p>Should see: <code>Uvicorn running on http://0.0.0.0:5000</code></p>
+        </div>
+
+        <div class="warning">
+            <strong>✓ Open DevTools and check Console:</strong>
+            <ol>
+                <li>Press F12 to open DevTools</li>
+                <li>Go to Console tab</li>
+                <li>Look for error messages like:
+                    <ul>
+                        <li>"Failed to fetch" = Backend not running or CORS blocked</li>
+                        <li>"Request timeout" = Backend running but slow</li>
+                        <li>"Cannot find module" = Missing http-proxy-middleware</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div class="warning">
+            <strong>✓ Check Network tab:</strong>
+            <ol>
+                <li>Open DevTools → Network tab</li>
+                <li>Refresh the page</li>
+                <li>Look for request to "health"</li>
+                <li>Check Status code: should be 200</li>
+                <li>Check Preview: should show <code>{"status":"ok","message":"Stock API is running"}</code></li>
+            </ol>
+        </div>
+
+        <h2>Common Errors & Solutions</h2>
+
+        <div class="error">
+            <strong>Error: Cannot find module 'http-proxy-middleware'</strong>
+            <p>Solution: Run <code>npm install</code> then restart <code>npm start</code></p>
+        </div>
+
+        <div class="error">
+            <strong>Error: CORS policy blocked the request</strong>
+            <p>Solution: Using proxy bypasses CORS. Make sure .env.local has <code>REACT_APP_API_URL=/api</code></p>
+        </div>
+
+        <div class="error">
+            <strong>Error: Backend not responding</strong>
+            <p>Solution: Ensure backend is running on port 5000: <code>python backend_v2/main.py</code></p>
+        </div>
+
+        <h2>What Should Happen</h2>
+        <ol>
+            <li>Frontend starts on localhost:3000</li>
+            <li>Backend starts on localhost:5000</li>
+            <li>setupProxy.js intercepts /api requests</li>
+            <li>Requests are routed to http://localhost:5000/api</li>
+            <li>No CORS errors</li>
+            <li>Status shows "● API Connected" (green)</li>
+            <li>Stock data loads and displays</li>
+        </ol>
+
+        <h2>Quick Start After Fix</h2>
+        <div class="code">
+# Terminal 1: Backend
+cd PyFinanceTracker_APP/backend_v2
+python main.py
+
+# Terminal 2: Frontend (after running: npm install)
+cd PyFinanceTracker_APP/frontend_v2
+npm install  # Run this if you haven't after updating package.json
+npm start
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            const output = document.getElementById('test-output');
+            output.style.display = 'block';
+            output.innerHTML += message + '\n';
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('test-output').innerHTML = '';
+        }
+
+        async function testBackendDirect() {
+            clearLog();
+            log('Testing direct connection to localhost:5000...\n');
+            try {
+                const response = await fetch('http://localhost:5000/api/health', {
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Success! Backend responding\n');
+                    log(JSON.stringify(data, null, 2));
+                } else {
+                    log(`❌ Status ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Failed: ${error.message}\n`);
+                log('This usually means:');
+                log('1. Backend is not running on localhost:5000');
+                log('2. CORS is blocking the request (this is OK, use proxy instead)');
+            }
+        }
+
+        async function testBackendViaProxy() {
+            clearLog();
+            log('Testing via proxy (/api)...\n');
+            try {
+                const response = await fetch('/api/health', {
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Success! Proxy is working\n');
+                    log(JSON.stringify(data, null, 2));
+                } else {
+                    log(`❌ Status ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Failed: ${error.message}\n`);
+                log('This means:');
+                log('1. setupProxy.js is not loaded (did you npm install after updating package.json?)');
+                log('2. Backend is not running on localhost:5000');
+                log('3. Restart: npm install && npm start');
+            }
+        }
+
+        async function testHealth() {
+            clearLog();
+            log('Running health check...\n');
+            
+            const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+            log(`Using API URL: ${API_BASE_URL}\n`);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Health check passed!\n');
+                    log(JSON.stringify(data, null, 2));
+                    log('\n✨ Frontend-Backend communication is working!');
+                } else {
+                    log(`❌ Status ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Health check failed: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

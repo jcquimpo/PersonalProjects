@@ -14,6 +14,15 @@ export const useStockData = () => {
   const [loadingWatchlist, setLoadingWatchlist] = useState(false);
   const [error, setError] = useState(null);
 
+  const isExtensionError = (err) => {
+    if (!err || !err.message) return false;
+    return (
+      err.message.includes('Extension context') ||
+      err.message.includes('port closed') ||
+      err.message.includes('message channel')
+    );
+  };
+
   const loadTopStocks = async (limit = 50, delay = 0.7) => {
     setLoadingTop(true);
     setError(null);
@@ -22,8 +31,13 @@ export const useStockData = () => {
       setTopStocks(data.top_stocks || []);
       setOhlcDataTop(data.ohlc_data || {});
     } catch (err) {
-      setError(err.message);
-      console.error('Failed to load top stocks:', err);
+      // Suppress extension errors
+      if (!isExtensionError(err)) {
+        setError(err.message);
+        console.error('Failed to load top stocks:', err);
+      } else {
+        console.debug('[Extension Error - Suppressed]', err.message);
+      }
     } finally {
       setLoadingTop(false);
     }
@@ -37,8 +51,13 @@ export const useStockData = () => {
       setWatchlist(data.watchlist || []);
       setOhlcDataWatchlist(data.ohlc_data || {});
     } catch (err) {
-      setError(err.message);
-      console.error('Failed to load watchlist:', err);
+      // Suppress extension errors
+      if (!isExtensionError(err)) {
+        setError(err.message);
+        console.error('Failed to load watchlist:', err);
+      } else {
+        console.debug('[Extension Error - Suppressed]', err.message);
+      }
     } finally {
       setLoadingWatchlist(false);
     }
