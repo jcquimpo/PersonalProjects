@@ -2,6 +2,8 @@ import time
 import numpy as np
 import pandas as pd
 from datetime import datetime
+import json
+import os
 
 # ===== CONFIGURATION =====
 # Set to True to generate mock data (fast, no API calls)
@@ -73,6 +75,20 @@ def fetch_ohlc_data(symbols: list[str], period: str = "7d", delay: float = 0.2) 
             print("  ✗ (no data)")
     
     return ohlc_data
+
+
+def format_ohlc_for_export(ohlc_data: dict) -> dict:
+    """Convert DataFrames to dictionary format for JSON export."""
+    formatted = {}
+    for symbol, df in ohlc_data.items():
+        formatted[symbol] = {
+            'dates': [str(date.date()) for date in df.index],
+            'opens': df['Open'].tolist(),
+            'highs': df['High'].tolist(),
+            'lows': df['Low'].tolist(),
+            'closes': df['Close'].tolist()
+        }
+    return formatted
 
 
 def get_top_5_symbols(limit: int = 30, delay: float = 0.1) -> tuple:
@@ -184,14 +200,15 @@ def monitor_watchlist(symbols: list[str], delay: float = 0.5) -> list[tuple]:
     for i, sym in enumerate(symbols):
         try:
             print(f"[{i+1}/{len(symbols)}] Monitoring {sym}...", end="", flush=True)
-            hist = fetch_price_history_local(sym, period="2d")
+            base_price = (abs(hash(sym)) % 400) + 50
+            df = generate_mock_ohlc(sym, days=2, base_price=float(base_price))
             
-            if hist.empty or len(hist) < 2:
+            if df.empty or len(df) < 2:
                 print(" (insufficient data)")
                 continue
             
-            prev_close = hist["Close"].iloc[-2]
-            last_close = hist["Close"].iloc[-1]
+            prev_close = df["Close"].iloc[-2]
+            last_close = df["Close"].iloc[-1]
             pct = (last_close - prev_close) / prev_close * 100
             performance.append((sym, pct))
             print(f" ✓ {pct:+.2f}%")
@@ -240,3 +257,37 @@ if watchlist_ohlc_data:
                 print(f"\n{sym} - {company_name}: No data available")
 else:
     print("⚠ No OHLC data was fetched for watchlist.")
+
+
+# ===== EXPORT DATA FOR FLASK DASHBOARD =====
+print("\n" + "=" * 70)
+print("EXPORTING DATA FOR FLASK DASHBOARD")
+print("=" * 70)
+
+# Create data directory if it doesn't exist
+data_dir = os.path.join(os.path.dirname(__file__), 'flask_app', 'data')
+os.makedirs(data_dir, exist_ok=True)
+
+# Prepare export data
+export_data = {
+    'timestamp': datetime.now().isoformat(),
+    'topMovers': {
+        'symbols': top5_symbols,
+        'performance': [[sym, float(pct)] for sym, pct in top5_performance],
+        'ohlc': format_ohlc_for_export(ohlc_data)
+    },
+    'watchlist': {
+        'symbols': WATCHLIST,
+        'performance': [[sym, float(pct)] for sym, pct in results],
+        'ohlc': format_ohlc_for_export(watchlist_ohlc_data)
+    },
+    'symbolNames': SYMBOL_NAMES
+}
+
+# Save to JSON file
+output_file = os.path.join(data_dir, 'stock_data.json')
+with open(output_file, 'w') as f:
+    json.dump(export_data, f, indent=2)
+
+print(f"✓ Data exported to {output_file}")
+print(f"✓ Analysis complete! Start Flask app with: python flask_app/app.py")

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Tracker Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>📈 Stock Tracker Dashboard</h1>
+                <p class="subtitle">Real-time market analysis and watchlist monitoring</p>
+                {% if data %}
+                    <p class="timestamp">Last updated: <span id="timestamp">{{ data.timestamp }}</span></p>
+                {% endif %}
+            </div>
+            <div class="header-actions">
+                <button id="refreshBtn" class="btn btn-primary">🔄 Refresh Data</button>
+            </div>
+        </header>
+
+        <!-- Error Message -->
+        {% if error %}
+            <div class="error-message">
+                <p>⚠️ {{ error }}</p>
+                <p>Run <code>python Top_Stocks.py</code> first to generate data.</p>
+            </div>
+        {% else %}
+
+        <!-- Tab Navigation -->
+        <div class="tabs-wrapper">
+            <div class="tabs">
+                <button class="tab-button active" data-tab="top-movers">
+                    🚀 Top Global Stocks
+                </button>
+                <button class="tab-button" data-tab="watchlist">
+                    👀 Watchlist
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tabs-content">
+
+            <!-- Top Movers Tab -->
+            <div id="top-movers" class="tab-pane active">
+                <section class="section">
+                    <h2>Top 5 Global Stock Movers</h2>
+                    
+                    <!-- Performance Cards -->
+                    <div class="performance-grid">
+                        {% if data.topMovers.performance %}
+                            {% for item in data.topMovers.performance %}
+                                {% set symbol, pct = item[0], item[1] %}
+                                {% set company_name = data.symbolNames.get(symbol, symbol) %}
+                                {% set is_positive = pct > 0 %}
+                                <div class="performance-card {% if is_positive %}positive{% else %}negative{% endif %}">
+                                    <div class="card-rank">#{{ loop.index }}</div>
+                                    <div class="card-symbol">{{ symbol }}</div>
+                                    <div class="card-name">{{ company_name }}</div>
+                                    <div class="card-change">
+                                        <span class="change-icon">{% if is_positive %}📈{% else %}📉{% endif %}</span>
+                                        <span class="change-value">{{ "%.2f"|format(pct) }}%</span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <!-- OHLC Charts Section -->
+                    <div class="charts-section">
+                        <h3>7-Day OHLC Data</h3>
+                        
+                        <div class="symbol-selector">
+                            {% for symbol in data.topMovers.symbols %}
+                                <button class="symbol-btn {% if loop.first %}active{% endif %}" 
+                                        data-symbol="{{ symbol }}"
+                                        data-section="top-movers">
+                                    {{ symbol }}
+                                </button>
+                            {% endfor %}
+                        </div>
+
+                        <div class="chart-wrapper">
+                            <canvas id="topMoversChart" class="price-chart"></canvas>
+                        </div>
+
+                        <!-- Price Table -->
+                        <div class="table-wrapper">
+                            <table class="price-table" id="topMoversTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Open</th>
+                                        <th>High</th>
+                                        <th>Low</th>
+                                        <th>Close</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Watchlist Tab -->
+            <div id="watchlist" class="tab-pane">
+                <section class="section">
+                    <h2>Your Watchlist</h2>
+                    
+                    <!-- Watchlist Performance Summary -->
+                    <div class="watchlist-summary">
+                        {% if data.watchlist.performance %}
+                            {% for item in data.watchlist.performance %}
+                                {% set symbol, pct = item[0], item[1] %}
+                                {% set company_name = data.symbolNames.get(symbol, symbol) %}
+                                {% set is_positive = pct > 0 %}
+                                <div class="watchlist-item-summary {% if is_positive %}positive{% else %}negative{% endif %}">
+                                    <div class="summary-symbol">{{ symbol }}</div>
+                                    <div class="summary-name">{{ company_name }}</div>
+                                    <div class="summary-change">{{ "%.2f"|format(pct) }}%</div>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <!-- Watchlist Charts Section -->
+                    <div class="charts-section">
+                        <h3>7-Day OHLC Data</h3>
+                        
+                        <div class="symbol-selector">
+                            {% for symbol in data.watchlist.symbols %}
+                                <button class="symbol-btn {% if loop.first %}active{% endif %}" 
+                                        data-symbol="{{ symbol }}"
+                                        data-section="watchlist">
+                                    {{ symbol }}
+                                </button>
+                            {% endfor %}
+                        </div>
+
+                        <div class="chart-wrapper">
+                            <canvas id="watchlistChart" class="price-chart"></canvas>
+                        </div>
+
+                        <!-- Price Table -->
+                        <div class="table-wrapper">
+                            <table class="price-table" id="watchlistTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Open</th>
+                                        <th>High</th>
+                                        <th>Low</th>
+                                        <th>Close</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Price Statistics -->
+                        <div class="price-stats">
+                            <div class="stat-card">
+                                <span class="stat-label">7-Day High</span>
+                                <span class="stat-value" id="highValue">--</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label">7-Day Low</span>
+                                <span class="stat-value" id="lowValue">--</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label">Current Price</span>
+                                <span class="stat-value" id="currentValue">--</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label">Average Price</span>
+                                <span class="stat-value" id="avgValue">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    <!-- Embedded stock data for JavaScript -->
+    <script>
+        const stockData = {{ data|tojson if data else 'null' }};
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
