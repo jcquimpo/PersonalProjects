@@ -1,0 +1,115 @@
+.top-movers-section {
+  margin-bottom: 3rem;
+}
+
+.movers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.mover-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.6), rgba(30, 41, 59, 0.6));
+  border: 2px solid;
+  border-radius: 10px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.mover-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.mover-card:hover::before {
+  left: 100%;
+}
+
+.mover-card.positive {
+  border-color: #22c55e;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(15, 23, 42, 0.6));
+}
+
+.mover-card.positive:hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(15, 23, 42, 0.8));
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+  transform: translateY(-5px);
+}
+
+.mover-card.negative {
+  border-color: #ef4444;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(15, 23, 42, 0.6));
+}
+
+.mover-card.negative:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(15, 23, 42, 0.8));
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  transform: translateY(-5px);
+}
+
+.mover-rank {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.mover-symbol {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #60a5fa;
+  margin-bottom: 0.5rem;
+}
+
+.mover-name {
+  font-size: 0.9rem;
+  color: #cbd5e1;
+  margin-bottom: 1rem;
+  min-height: 2.2em;
+}
+
+.mover-change {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.change-icon {
+  font-size: 1.8rem;
+}
+
+.mover-card.positive .change-value {
+  color: #22c55e;
+}
+
+.mover-card.negative .change-value {
+  color: #ef4444;
+}
+
+@media (max-width: 768px) {
+  .movers-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+
+  .mover-symbol {
+    font-size: 1.5rem;
+  }
+
+  .mover-change {
+    font-size: 1.2rem;
+  }
+}
