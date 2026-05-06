@@ -1,8 +1,13 @@
 from flask import Flask, render_template, jsonify
 import json
 import os
+import sys
 from datetime import datetime
 from config import config, DevelopmentConfig
+
+# Add parent directory to path so we can import data_generator
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from data_generator import generate_stock_data, save_stock_data
 
 app = Flask(__name__)
 
@@ -44,15 +49,35 @@ def get_stock_data():
 
 @app.route('/api/refresh')
 def refresh_data():
-    """Refresh stock data from JSON file"""
-    data = load_stock_data()
-    if not data:
-        return jsonify({'error': 'No data available'}), 404
-    return jsonify({
-        'success': True,
-        'timestamp': data.get('timestamp'),
-        'message': 'Data refreshed successfully'
-    })
+    """Refresh stock data by regenerating from scratch"""
+    try:
+        print("\n" + "="*70)
+        print("REFRESH TRIGGERED FROM FLASK")
+        print("="*70)
+        
+        # Generate fresh stock data (silent mode for web requests)
+        data = generate_stock_data(verbose=False)
+        
+        # Save to file
+        output_file = save_stock_data(data, DATA_DIR)
+        
+        print(f"✓ Data refreshed and saved to {output_file}")
+        print("="*70 + "\n")
+        
+        return jsonify({
+            'success': True,
+            'timestamp': data.get('timestamp'),
+            'message': 'Stock data refreshed successfully',
+            'topMovers': data.get('topMovers', {}).get('symbols', []),
+            'watchlist': data.get('watchlist', {}).get('symbols', [])
+        }), 200
+    except Exception as e:
+        error_msg = f"Error refreshing data: {str(e)}"
+        print(f"✗ {error_msg}")
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 500
 
 
 if __name__ == '__main__':
