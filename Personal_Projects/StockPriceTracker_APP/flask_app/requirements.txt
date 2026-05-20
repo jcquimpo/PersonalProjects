@@ -1,8 +1,0 @@
-# Flask Stock Tracker Dashboard
-
-Flask==2.3.3
-Werkzeug==2.3.7
-
-# Optional but recommended:
-# python-dotenv==1.0.0        # For environment variables
-# gunicorn==21.2.0            # For production deployment
