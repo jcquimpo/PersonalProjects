@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Price Tracker - Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-lg-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="section-title mb-0">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </h1>
+            <button class="btn btn-light btn-custom" id="refreshChartsBtn">
+                <i class="bi bi-arrow-clockwise"></i> Refresh Charts
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Info -->
+<div class="row mb-4">
+    <div class="col-lg-12">
+        <div class="alert alert-info alert-custom" role="alert">
+            <i class="bi bi-info-circle"></i> <strong>Dashboard Tip:</strong> 
+            Hover over charts for detailed information. Charts update every time you refresh data.
+        </div>
+    </div>
+</div>
+
+<!-- Movers Charts Section -->
+<div class="row mb-5">
+    <div class="col-lg-12">
+        <h2 class="section-title"><i class="bi bi-fire"></i> Top Movers Charts</h2>
+    </div>
+
+    <div class="col-lg-12">
+        <div class="chart-container">
+            <h5 class="mb-3"><i class="bi bi-graph-up"></i> Close Price (7-Day)</h5>
+            <div id="moversChart"></div>
+        </div>
+    </div>
+
+    <div class="col-lg-12">
+        <div class="chart-container">
+            <h5 class="mb-3"><i class="bi bi-percent"></i> Rebased Performance (Start = 100)</h5>
+            <div id="moversRebasedChart"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Watchlist Charts Section -->
+<div class="row mb-5">
+    <div class="col-lg-12">
+        <h2 class="section-title"><i class="bi bi-bookmark-heart"></i> Watchlist Charts</h2>
+    </div>
+
+    <div class="col-lg-12">
+        <div class="chart-container">
+            <h5 class="mb-3"><i class="bi bi-bar-chart"></i> Daily % Change</h5>
+            <div id="watchlistBarChart"></div>
+        </div>
+    </div>
+
+    <div class="col-lg-12">
+        <div class="chart-container">
+            <h5 class="mb-3"><i class="bi bi-graph-up"></i> Close Price (7-Day)</h5>
+            <div id="watchlistChart"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Tables Section -->
+<div class="row mb-5">
+    <div class="col-lg-12">
+        <h2 class="section-title"><i class="bi bi-table"></i> Data Tables</h2>
+    </div>
+
+    <div class="col-lg-12 mb-4">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-fire"></i> Top Movers Details</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="detailedMoversTable">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Company</th>
+                                <th>Today %</th>
+                                <th>7-Day %</th>
+                                <th>Volatility</th>
+                                <th>Score</th>
+                                <th>Recommendation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-bookmark-heart"></i> Watchlist Details</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="detailedWatchlistTable">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Company</th>
+                                <th>Today %</th>
+                                <th>7-Day %</th>
+                                <th>Current Price</th>
+                                <th>Score</th>
+                                <th>Recommendation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function formatPercent(value) {
+        const sign = value >= 0 ? '+' : '';
+        const color = value >= 0 ? 'positive' : 'negative';
+        return `<span class="${color}">${sign}${value.toFixed(2)}%</span>`;
+    }
+
+    function formatRecommendation(rec) {
+        let className = 'recommendation-badge ';
+        if (rec.includes('BUY')) className += 'recommendation-buy';
+        else if (rec.includes('HOLD')) className += 'recommendation-hold';
+        else className += 'recommendation-avoid';
+        return `<span class="${className}">${rec}</span>`;
+    }
+
+    async function loadCharts() {
+        showLoading();
+        try {
+            const response = await fetch('/api/charts');
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                const charts = result.charts;
+                
+                // Render Plotly charts
+                Plotly.newPlot('moversChart', JSON.parse(charts.movers_price).data, JSON.parse(charts.movers_price).layout);
+                Plotly.newPlot('moversRebasedChart', JSON.parse(charts.movers_rebased).data, JSON.parse(charts.movers_rebased).layout);
+                Plotly.newPlot('watchlistBarChart', JSON.parse(charts.watchlist_bar).data, JSON.parse(charts.watchlist_bar).layout);
+                Plotly.newPlot('watchlistChart', JSON.parse(charts.watchlist_price).data, JSON.parse(charts.watchlist_price).layout);
+            }
+        } catch (error) {
+            console.error('Error loading charts:', error);
+            alert('Error loading charts. Please check the console.');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function loadData() {
+        try {
+            const response = await fetch('/api/data');
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                updateTablesData(result.top_movers, result.watchlist);
+            }
+        } catch (error) {
+            console.error('Error loading data:', error);
+        }
+    }
+
+    function updateTablesData(movers, watchlist) {
+        // Movers table
+        const moversBody = document.querySelector('#detailedMoversTable tbody');
+        moversBody.innerHTML = movers.map(item => `
+            <tr>
+                <td><span class="symbol-badge">${item.Symbol}</span></td>
+                <td>${item.Company}</td>
+                <td>${formatPercent(item.Momentum)}</td>
+                <td>${formatPercent(item['7Day'])}</td>
+                <td>${item.Volatility.toFixed(2)}%</td>
+                <td><strong>${item.Score.toFixed(2)}</strong></td>
+                <td>${formatRecommendation(item.Recommendation)}</td>
+            </tr>
+        `).join('');
+
+        // Watchlist table
+        const watchlistBody = document.querySelector('#detailedWatchlistTable tbody');
+        watchlistBody.innerHTML = watchlist.map(item => `
+            <tr>
+                <td><span class="symbol-badge">${item.Symbol}</span></td>
+                <td>${item.Company}</td>
+                <td>${formatPercent(item['Today %'])}</td>
+                <td>${formatPercent(item['7-Day %'])}</td>
+                <td>$${item['Current $'].toFixed(2)}</td>
+                <td><strong>${item.Score.toFixed(2)}</strong></td>
+                <td>${formatRecommendation(item.Recommendation)}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Refresh button
+    document.getElementById('refreshChartsBtn').addEventListener('click', () => {
+        loadCharts();
+        loadData();
+    });
+
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadCharts();
+        loadData();
+    });
+
+    // Auto-refresh every 5 minutes
+    setInterval(() => {
+        console.log('Auto-refreshing charts...');
+        loadCharts();
+        loadData();
+    }, 5 * 60 * 1000);
+</script>
+{% endblock %}
