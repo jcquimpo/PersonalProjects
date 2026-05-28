@@ -34,15 +34,8 @@
 
     <div class="col-lg-12">
         <div class="chart-container">
-            <h5 class="mb-3"><i class="bi bi-graph-up"></i> Close Price (7-Day)</h5>
-            <div id="moversChart"></div>
-        </div>
-    </div>
-
-    <div class="col-lg-12">
-        <div class="chart-container">
-            <h5 class="mb-3"><i class="bi bi-percent"></i> Rebased Performance (Start = 100)</h5>
-            <div id="moversRebasedChart"></div>
+            <h5 class="mb-3"><i class="bi bi-graph-up"></i> Daily % Change</h5>
+            <canvas id="mover-performance-chart" style="height: 300px;"></canvas>
         </div>
     </div>
 </div>
@@ -56,14 +49,14 @@
     <div class="col-lg-12">
         <div class="chart-container">
             <h5 class="mb-3"><i class="bi bi-bar-chart"></i> Daily % Change</h5>
-            <div id="watchlistBarChart"></div>
+            <canvas id="watchlist-performance-chart" style="height: 300px;"></canvas>
         </div>
     </div>
 
     <div class="col-lg-12">
         <div class="chart-container">
-            <h5 class="mb-3"><i class="bi bi-graph-up"></i> Close Price (7-Day)</h5>
-            <div id="watchlistChart"></div>
+            <h5 class="mb-3"><i class="bi bi-doughnut"></i> Investment Scores</h5>
+            <canvas id="mover-scores-chart" style="height: 300px;"></canvas>
         </div>
     </div>
 </div>
@@ -158,76 +151,73 @@
     }
 
     async function loadCharts() {
-        showLoading();
         try {
-            const response = await fetch('/api/charts');
-            const result = await response.json();
-            
-            if (result.status === 'success') {
-                const charts = result.charts;
-                
-                // Render Plotly charts
-                Plotly.newPlot('moversChart', JSON.parse(charts.movers_price).data, JSON.parse(charts.movers_price).layout);
-                Plotly.newPlot('moversRebasedChart', JSON.parse(charts.movers_rebased).data, JSON.parse(charts.movers_rebased).layout);
-                Plotly.newPlot('watchlistBarChart', JSON.parse(charts.watchlist_bar).data, JSON.parse(charts.watchlist_bar).layout);
-                Plotly.newPlot('watchlistChart', JSON.parse(charts.watchlist_price).data, JSON.parse(charts.watchlist_price).layout);
-            }
+            // Use Chart.js functions from main.js
+            Charts.loadMoverPerformanceChart('mover-performance-chart');
+            Charts.loadWatchlistPerformanceChart('watchlist-performance-chart');
+            Charts.loadMoverScoresChart('mover-scores-chart');
         } catch (error) {
-            console.error('Error loading charts:', error);
-            alert('Error loading charts. Please check the console.');
-        } finally {
-            hideLoading();
+            console.warn('Charts not available yet:', error);
         }
     }
 
     async function loadData() {
         try {
-            const response = await fetch('/api/data');
-            const result = await response.json();
-            
-            if (result.status === 'success') {
-                updateTablesData(result.top_movers, result.watchlist);
-            }
+            const result = await API.get('/api/data');
+            updateTablesData(result.top_movers, result.watchlist);
         } catch (error) {
-            console.error('Error loading data:', error);
+            console.warn('Table data not available yet:', error.message);
         }
     }
 
     function updateTablesData(movers, watchlist) {
         // Movers table
         const moversBody = document.querySelector('#detailedMoversTable tbody');
-        moversBody.innerHTML = movers.map(item => `
-            <tr>
-                <td><span class="symbol-badge">${item.Symbol}</span></td>
-                <td>${item.Company}</td>
-                <td>${formatPercent(item.Momentum)}</td>
-                <td>${formatPercent(item['7Day'])}</td>
-                <td>${item.Volatility.toFixed(2)}%</td>
-                <td><strong>${item.Score.toFixed(2)}</strong></td>
-                <td>${formatRecommendation(item.Recommendation)}</td>
-            </tr>
-        `).join('');
+        if (movers && movers.length > 0) {
+            moversBody.innerHTML = movers.map(item => `
+                <tr>
+                    <td><span class="symbol-badge">${item.Symbol}</span></td>
+                    <td>${item.Company || item.Symbol}</td>
+                    <td>${formatPercent(item.Momentum)}</td>
+                    <td>${formatPercent(item['7-Day %'] || 0)}</td>
+                    <td>${(item['Volatility %'] || 0).toFixed(2)}%</td>
+                    <td><strong>${item.Score.toFixed(2)}</strong></td>
+                    <td>${formatRecommendation(item.Recommendation)}</td>
+                </tr>
+            `).join('');
+        } else {
+            moversBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No data available. Run analysis first.</td></tr>';
+        }
 
         // Watchlist table
         const watchlistBody = document.querySelector('#detailedWatchlistTable tbody');
-        watchlistBody.innerHTML = watchlist.map(item => `
-            <tr>
-                <td><span class="symbol-badge">${item.Symbol}</span></td>
-                <td>${item.Company}</td>
-                <td>${formatPercent(item['Today %'])}</td>
-                <td>${formatPercent(item['7-Day %'])}</td>
-                <td>$${item['Current $'].toFixed(2)}</td>
-                <td><strong>${item.Score.toFixed(2)}</strong></td>
-                <td>${formatRecommendation(item.Recommendation)}</td>
-            </tr>
-        `).join('');
+        if (watchlist && watchlist.length > 0) {
+            watchlistBody.innerHTML = watchlist.map(item => `
+                <tr>
+                    <td><span class="symbol-badge">${item.Symbol}</span></td>
+                    <td>${item.Company || item.Symbol}</td>
+                    <td>${formatPercent(item['Today %'] || 0)}</td>
+                    <td>${formatPercent(item['7-Day %'] || 0)}</td>
+                    <td>$${(item['Current $'] || 0).toFixed(2)}</td>
+                    <td><strong>${(item.Score || 0).toFixed(2)}</strong></td>
+                    <td>${formatRecommendation(item.Recommendation || 'HOLD')}</td>
+                </tr>
+            `).join('');
+        } else {
+            watchlistBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No data available. Run analysis first.</td></tr>';
+        }
     }
 
     // Refresh button
-    document.getElementById('refreshChartsBtn').addEventListener('click', () => {
-        loadCharts();
-        loadData();
-    });
+    const refreshBtn = document.getElementById('refreshChartsBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            showLoading();
+            loadCharts();
+            loadData();
+            setTimeout(hideLoading, 500);
+        });
+    }
 
     // Load on page load
     document.addEventListener('DOMContentLoaded', () => {
@@ -237,7 +227,7 @@
 
     // Auto-refresh every 5 minutes
     setInterval(() => {
-        console.log('Auto-refreshing charts...');
+        console.log('Auto-refreshing dashboard...');
         loadCharts();
         loadData();
     }, 5 * 60 * 1000);
