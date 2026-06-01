@@ -2,36 +2,11 @@
    STOCK ANALYSIS DASHBOARD - MAIN JAVASCRIPT
    ============================================================================ */
 
-// ============================================================================
-// CONFIGURATION
-// ============================================================================
-// Update API_BASE based on your deployment:
-// - Local: 'http://localhost:5000'
-// - Heroku: 'https://your-app-name.herokuapp.com'
-// - PythonAnywhere: 'https://yourusername.pythonanywhere.com'
-// - Railway: 'https://your-railway-url.up.railway.app'
-
-const API_CONFIG = {
-    // Auto-detect environment
-    base: (() => {
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return 'http://localhost:5000';
-        }
-        // For GitHub Pages, update this to your backend URL
-        return 'https://your-backend-url.com';
-    })()
-};
-
-// ============================================================================
-// API HELPER FUNCTIONS
-// ============================================================================
-
 // API Helper Functions
 const API = {
     async get(endpoint) {
         try {
-            const url = API_CONFIG.base + endpoint;
-            const response = await fetch(url);
+            const response = await fetch(endpoint);
             const data = await response.json();
             if (!response.ok) {
                 throw new Error(data.error || `HTTP ${response.status}`);
@@ -45,8 +20,7 @@ const API = {
 
     async post(endpoint, data = {}) {
         try {
-            const url = API_CONFIG.base + endpoint;
-            const response = await fetch(url, {
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)

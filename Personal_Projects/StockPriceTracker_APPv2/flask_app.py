@@ -4,7 +4,6 @@ Displays results from StockPriceTracker_appv2.py analysis
 """
 
 from flask import Flask, render_template, jsonify, request, session
-from flask_cors import CORS
 import os
 import sys
 import json
@@ -22,15 +21,6 @@ import StockPriceTracker_appv2 as analyzer
 # Configure Flask app
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
-
-# Configure CORS for cross-origin requests from GitHub Pages
-CORS(app, resources={
-    r"/api/*": {
-        "origins": ["*"],  # Allow all origins for public API
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"]
-    }
-})
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
