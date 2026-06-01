@@ -3,78 +3,68 @@
 {% block title %}Home - Stock Analysis Dashboard{% endblock %}
 
 {% block content %}
+<!-- Hero Section -->
 <div class="hero">
     <h1>📊 Stock Analysis Dashboard</h1>
     <p>Professional investment analysis tool with real-time stock data</p>
     
-    <div class="hero-buttons">
-        {% if has_results %}
-            <a href="/dashboard" class="btn btn-primary">
+    {% if has_results %}
+        <div class="hero-buttons">
+            <a href="/dashboard" class="btn btn-primary btn-lg">
                 <i class="bi bi-speedometer2"></i> View Dashboard
             </a>
-            <a href="/movers" class="btn btn-info">
-                <i class="bi bi-graph-up"></i> Top Movers
-            </a>
-            <a href="/watchlist" class="btn btn-success">
-                <i class="bi bi-star"></i> Watchlist
-            </a>
-            <a href="/recommendations" class="btn btn-warning">
-                <i class="bi bi-lightbulb"></i> Recommendations
-            </a>
-            <button id="analyze-btn" class="btn btn-primary">
+            <button id="analyze-btn" class="btn btn-outline-light btn-lg">
                 <i class="bi bi-arrow-repeat"></i> Run New Analysis
             </button>
-        {% else %}
+        </div>
+    {% else %}
+        <div class="hero-buttons">
             <button id="analyze-btn" class="btn btn-primary btn-lg">
                 <i class="bi bi-play-fill"></i> Start Analysis
             </button>
-            <a href="/about" class="btn btn-secondary btn-lg">
-                <i class="bi bi-info-circle"></i> Learn More
-            </a>
-        {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<!-- Status -->
+<div id="analysis-status" class="mt-4"></div>
+
+<!-- Features Grid -->
+<div class="row mt-5 mb-4">
+    <div class="col-md-6 col-lg-3 mb-3">
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-label">Data Source</div>
+            <div class="stat-value">Finnhub + yfinance</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3 mb-3">
+        <div class="stat-card">
+            <div class="stat-icon">⚡</div>
+            <div class="stat-label">Update Frequency</div>
+            <div class="stat-value">Real-time</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3 mb-3">
+        <div class="stat-card">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-label">Analysis Focus</div>
+            <div class="stat-value">S&P 500 + Watchlist</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3 mb-3">
+        <div class="stat-card">
+            <div class="stat-icon">💡</div>
+            <div class="stat-label">Features</div>
+            <div class="stat-value">AI Scoring System</div>
+        </div>
     </div>
 </div>
 
-{% if has_results %}
-    <div class="card">
-        <div class="card-header">
-            <h5>📈 Last Analysis</h5>
-        </div>
-        <div class="card-body">
-            <p><strong>Ran on:</strong> {{ last_run or 'Never' }}</p>
-            <p><strong>Status:</strong> <span class="badge badge-success">Complete</span></p>
-        </div>
-    </div>
-{% endif %}
-
-<div id="analysis-status"></div>
-
-<div class="grid">
-    <div class="stat-card">
-        <div class="stat-icon">📊</div>
-        <div class="stat-label">Data Source</div>
-        <div class="stat-value">Finnhub + yfinance</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon">⚡</div>
-        <div class="stat-label">Update Frequency</div>
-        <div class="stat-value">Real-time</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon">🎯</div>
-        <div class="stat-label">Analysis Focus</div>
-        <div class="stat-value">S&P 500 + Watchlist</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon">💡</div>
-        <div class="stat-label">Features</div>
-        <div class="stat-value">AI Scoring System</div>
-    </div>
-</div>
-
-<div class="card">
+<!-- Features List -->
+<div class="card mt-4">
     <div class="card-header">
-        <h5>✨ Features</h5>
+        <h5>✨ Key Features</h5>
     </div>
     <div class="card-body">
         <ul style="margin: 0; padding-left: 20px; line-height: 2;">
@@ -82,7 +72,7 @@
             <li><strong>OHLC Analysis:</strong> 7-day historical price data with trend analysis</li>
             <li><strong>Investment Scoring:</strong> AI-powered momentum and stability scoring</li>
             <li><strong>Watchlist Tracking:</strong> Monitor your favorite stocks in real-time</li>
-            <li><strong>Professional Visualizations:</strong> Charts and graphs for data insight</li>
+            <li><strong>Professional Charts:</strong> Interactive visualizations for data insight</li>
             <li><strong>Smart Recommendations:</strong> Buy, hold, or sell signals based on analysis</li>
         </ul>
     </div>

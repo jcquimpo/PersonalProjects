@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Recommendations - Stock Analysis{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>💡 Investment Recommendations</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Disclaimer:</strong> This analysis is for educational purposes only. Always conduct your own research and consult a financial advisor before making investment decisions.</p>
+    </div>
+</div>
+
+<div class="grid-2">
+    {% if best_mover %}
+    <div class="recommendation {% if 'BUY' in best_mover.get('Recommendation', '') %}buy{% elif 'HOLD' in best_mover.get('Recommendation', '') %}hold{% else %}sell{% endif %}">
+        <h3 class="recommendation-title">
+            🏆 Top Mover Pick: <span class="badge" style="background-color: #667eea; color: white;">{{ best_mover.get('Symbol', best_mover.Symbol if best_mover is mapping else best_mover[0]) }}</span>
+        </h3>
+        <p class="recommendation-content">
+            <strong>Recommendation:</strong> {{ best_mover.get('Recommendation', 'HOLD') }}<br>
+            <strong>Score:</strong> {{ "%.2f"|format(best_mover.get('Score', 0)) }}<br>
+            <strong>Daily Momentum:</strong> 
+            <span class="{{ 'pct-positive' if best_mover.get('Momentum', 0) >= 0 else 'pct-negative' }}">
+                {{ "%.2f"|format(best_mover.get('Momentum', 0)) }}%
+            </span>
+        </p>
+        <hr>
+        <p class="recommendation-content">
+            <small>
+                {% if 'BUY' in best_mover.get('Recommendation', '') %}
+                    ✅ Strong momentum with good stability. Consider initiating a position or adding to existing holdings.
+                {% elif 'HOLD' in best_mover.get('Recommendation', '') %}
+                    🟡 Mixed signals. Hold current positions and await clarity. Avoid new entries at this time.
+                {% else %}
+                    🔴 Weak momentum or high volatility. Avoid new positions. Consider taking profits if holding.
+                {% endif %}
+            </small>
+        </p>
+    </div>
+    {% endif %}
+
+    {% if best_watchlist %}
+    <div class="recommendation {% if 'BUY' in best_watchlist.get('Recommendation', '') %}buy{% elif 'HOLD' in best_watchlist.get('Recommendation', '') %}hold{% else %}sell{% endif %}">
+        <h3 class="recommendation-title">
+            🌟 Watchlist Pick: <span class="badge" style="background-color: #667eea; color: white;">{{ best_watchlist.get('Symbol', best_watchlist.Symbol if best_watchlist is mapping else best_watchlist[0]) }}</span>
+        </h3>
+        <p class="recommendation-content">
+            <strong>Recommendation:</strong> {{ best_watchlist.get('Recommendation', 'HOLD') }}<br>
+            <strong>Score:</strong> {{ "%.2f"|format(best_watchlist.get('Score', 0)) }}<br>
+            <strong>Trend:</strong> Established holding
+        </p>
+        <hr>
+        <p class="recommendation-content">
+            <small>
+                {% if 'BUY' in best_watchlist.get('Recommendation', '') %}
+                    ✅ Strong trend strength. Maintain position and consider adding on dips. Excellent long-term core holding.
+                {% elif 'HOLD' in best_watchlist.get('Recommendation', '') %}
+                    🟡 Positive momentum. Hold current positions. Look for better entry points before adding.
+                {% else %}
+                    🔴 Weak trend. Consider reducing or exiting position. Look for better opportunities elsewhere.
+                {% endif %}
+            </small>
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5>🎯 Portfolio Strategy Guide</h5>
+    </div>
+    <div class="card-body">
+        <div class="grid">
+            <div>
+                <h5>📈 Movers (High Growth, High Risk)</h5>
+                <ul>
+                    <li>Buy only if score > 5 (strong momentum)</li>
+                    <li>Use 5-10% of portfolio maximum</li>
+                    <li>Set stop-loss at -5% to limit losses</li>
+                    <li>Monitor daily for changes</li>
+                    <li>Exit on declining momentum</li>
+                </ul>
+            </div>
+            <div>
+                <h5>📊 Watchlist (Established, Lower Risk)</h5>
+                <ul>
+                    <li>Hold if score > 1 (positive trend)</li>
+                    <li>Add on dips below 7-day MA</li>
+                    <li>Core long-term holdings</li>
+                    <li>Rebalance quarterly</li>
+                    <li>Consider dividend reinvestment</li>
+                </ul>
+            </div>
+            <div>
+                <h5>💰 Cash Management</h5>
+                <ul>
+                    <li>Keep 10-20% in cash reserves</li>
+                    <li>Rebalance when position > 20%</li>
+                    <li>Avoid averaging down into losses</li>
+                    <li>Use cash for buying opportunities</li>
+                    <li>Dollar-cost average over time</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5>📋 All Recommendations</h5>
+    </div>
+    <div class="card-body">
+        <h6>Movers Ranking:</h6>
+        <div class="table-responsive mb-4">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Symbol</th>
+                        <th>Score</th>
+                        <th>Recommendation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if movers %}
+                        {% for idx, mover in enumerate(movers) %}
+                        <tr>
+                            <td>#{{ idx + 1 }}</td>
+                            <td><strong>{{ mover.get('Symbol', mover.Symbol if mover is mapping else mover[0]) }}</strong></td>
+                            <td>{{ "%.2f"|format(mover.get('Score', 0)) }}</td>
+                            <td>
+                                <span class="badge {{ 'badge-buy' if 'BUY' in mover.get('Recommendation', '') else 'badge-hold' if 'HOLD' in mover.get('Recommendation', '') else 'badge-sell' }}">
+                                    {{ mover.get('Recommendation', 'N/A') }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <h6>Watchlist Ranking:</h6>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Symbol</th>
+                        <th>Score</th>
+                        <th>Recommendation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if watchlist %}
+                        {% for idx, item in enumerate(watchlist) %}
+                        <tr>
+                            <td>#{{ idx + 1 }}</td>
+                            <td><strong>{{ item.get('Symbol', item.Symbol if item is mapping else item[0]) }}</strong></td>
+                            <td>{{ "%.2f"|format(item.get('Score', 0)) }}</td>
+                            <td>
+                                <span class="badge {{ 'badge-buy' if 'BUY' in item.get('Recommendation', '') else 'badge-hold' if 'HOLD' in item.get('Recommendation', '') else 'badge-sell' }}">
+                                    {{ item.get('Recommendation', 'N/A') }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

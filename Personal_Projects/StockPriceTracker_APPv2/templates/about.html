@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}About - Stock Analysis Dashboard{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>ℹ️ About This Dashboard</h5>
+    </div>
+    <div class="card-body">
+        <h6>What is the Stock Analysis Dashboard?</h6>
+        <p>
+            This is a professional-grade investment analysis tool that combines real-time market data with AI-powered 
+            scoring algorithms to identify promising trading opportunities and provide investment recommendations.
+        </p>
+
+        <h6>Key Features</h6>
+        <ul>
+            <li><strong>Daily Movers Scanning:</strong> Identifies S&P 500 stocks with highest momentum using Finnhub API</li>
+            <li><strong>OHLC Analysis:</strong> Fetches 7-day historical price data from yfinance</li>
+            <li><strong>Investment Scoring:</strong> AI-powered algorithm scoring based on momentum and volatility</li>
+            <li><strong>Watchlist Tracking:</strong> Monitor your favorite established stocks (AAPL, NVDA, MSFT, META, GOOGL)</li>
+            <li><strong>Interactive Visualizations:</strong> Professional charts using Chart.js and Plotly</li>
+            <li><strong>Smart Recommendations:</strong> Buy, Hold, or Avoid signals based on comprehensive analysis</li>
+        </ul>
+
+        <h6>Data Sources</h6>
+        <ul>
+            <li><strong>Finnhub API:</strong> Real-time stock quotes and market data (https://finnhub.io)</li>
+            <li><strong>yfinance:</strong> Historical OHLC data from Yahoo Finance</li>
+            <li><strong>PyTickerSymbols:</strong> S&P 500 ticker list management</li>
+        </ul>
+
+        <h6>How It Works</h6>
+        <ol>
+            <li><strong>Scan:</strong> Analyzes S&P 500 stocks for daily price movements</li>
+            <li><strong>Fetch:</strong> Retrieves 7-day OHLC history for top movers and watchlist stocks</li>
+            <li><strong>Analyze:</strong> Calculates technical indicators: momentum, volatility, moving averages</li>
+            <li><strong>Score:</strong> Assigns investment scores based on momentum and trend stability</li>
+            <li><strong>Recommend:</strong> Generates Buy/Hold/Avoid signals with confidence levels</li>
+            <li><strong>Visualize:</strong> Creates professional charts for data-driven insights</li>
+        </ol>
+
+        <h6>Scoring Algorithm</h6>
+        <div class="alert alert-info">
+            <strong>Movers Score =</strong> (Daily % + 7-Day %) × 0.6 + (100 / Volatility) × 0.4
+            <br>
+            <strong>Watchlist Score =</strong> (7-Day % × 0.5) + (vs 7-MA % × 0.5)
+            <br>
+            <strong>Buy Signal:</strong> Score > 5 (movers) or > 1 (watchlist)
+            <br>
+            <strong>Hold Signal:</strong> Score > 2 (movers) or > -1 (watchlist)
+            <br>
+            <strong>Avoid Signal:</strong> Score ≤ 2 (movers) or ≤ -1 (watchlist)
+        </div>
+
+        <h6>Portfolio Strategy</h6>
+        <p>
+            This tool recommends a balanced approach:
+        </p>
+        <ul>
+            <li><strong>Movers (5-10% of portfolio):</strong> High-risk, high-reward opportunities for active traders</li>
+            <li><strong>Watchlist (40-60% of portfolio):</strong> Stable, established holdings for long-term growth</li>
+            <li><strong>Cash (10-20% of portfolio):</strong> Reserves for opportunistic investments and risk management</li>
+        </ul>
+
+        <h6>⚠️ Important Disclaimer</h6>
+        <div class="alert alert-warning">
+            <strong>EDUCATIONAL USE ONLY</strong>
+            <br><br>
+            This tool is provided for educational and informational purposes only. It is NOT financial advice. 
+            Past performance does not guarantee future results. Stock market investments carry substantial risk. 
+            Always:
+            <ul>
+                <li>Conduct your own independent research</li>
+                <li>Understand your risk tolerance</li>
+                <li>Diversify your portfolio</li>
+                <li>Consult with a qualified financial advisor</li>
+                <li>Only invest money you can afford to lose</li>
+            </ul>
+            The creator of this tool is not responsible for any losses incurred from using this analysis.
+        </div>
+
+        <h6>Technology Stack</h6>
+        <ul>
+            <li><strong>Backend:</strong> Python, Flask</li>
+            <li><strong>Frontend:</strong> HTML5, CSS3, JavaScript, Bootstrap 5</li>
+            <li><strong>Data APIs:</strong> Finnhub, yfinance</li>
+            <li><strong>Visualization:</strong> Chart.js, Plotly.js</li>
+            <li><strong>Data Processing:</strong> Pandas, NumPy</li>
+        </ul>
+
+        <h6>Getting Started</h6>
+        <ol>
+            <li>Click the "Start Analysis" button on the home page</li>
+            <li>Wait for the analysis to complete (usually 2-3 minutes)</li>
+            <li>View results on the Dashboard</li>
+            <li>Explore Top Movers and Watchlist tabs</li>
+            <li>Check Recommendations for investment signals</li>
+        </ol>
+    </div>
+</div>
+
+{% endblock %}

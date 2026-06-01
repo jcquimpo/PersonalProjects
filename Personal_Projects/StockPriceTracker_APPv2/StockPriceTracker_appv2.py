@@ -535,18 +535,24 @@ def analyze_and_score(
             
             watchlist_scores_list.append({
                 "Symbol": row["Symbol"],
+                "Company": row["Company"],
+                "Today %": row["Today %"],
+                "7-Day %": row["7-Day %"],
                 "Score": total_score,
                 "Recommendation": (
-                    "🟢 BUY/HOLD" if total_score > 1 else 
+                    "🟢 BUY" if total_score > 1 else 
                     "🟡 HOLD" if total_score > -1 else 
-                    "🔴 CONSIDER SELLING"
+                    "🔴 SELL"
                 )
             })
         else:
             watchlist_scores_list.append({
                 "Symbol": row["Symbol"],
+                "Company": row["Company"],
+                "Today %": 0,
+                "7-Day %": 0,
                 "Score": 0,
-                "Recommendation": "⚠️  NO DATA"
+                "Recommendation": "⚠️ NO DATA"
             })
 
     wl_score_df = pd.DataFrame(watchlist_scores_list).sort_values("Score", ascending=False)

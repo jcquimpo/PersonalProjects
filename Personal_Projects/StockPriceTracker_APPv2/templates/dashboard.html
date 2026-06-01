@@ -3,127 +3,107 @@
 {% block title %}Dashboard - Stock Analysis{% endblock %}
 
 {% block content %}
+<!-- Header -->
 <div class="row mb-4">
     <div class="col-lg-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <h1 class="section-title mb-0">
-                <i class="bi bi-speedometer2"></i> Dashboard
-            </h1>
-            <button class="btn btn-light btn-custom" id="refreshChartsBtn">
-                <i class="bi bi-arrow-clockwise"></i> Refresh Charts
-            </button>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="section-title mb-0"><i class="bi bi-speedometer2"></i> Dashboard</h1>
+            <div class="btn-group">
+                <button class="btn btn-light btn-custom" id="runAnalysisBtn">
+                    <i class="bi bi-play-fill"></i> Run Analysis
+                </button>
+                <button class="btn btn-light btn-custom" id="refreshBtn">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
         </div>
+        <div id="analysis-status"></div>
     </div>
 </div>
 
-<!-- Alert Info -->
+<!-- Charts Row -->
 <div class="row mb-4">
-    <div class="col-lg-12">
-        <div class="alert alert-info alert-custom" role="alert">
-            <i class="bi bi-info-circle"></i> <strong>Dashboard Tip:</strong> 
-            Hover over charts for detailed information. Charts update every time you refresh data.
-        </div>
-    </div>
-</div>
-
-<!-- Movers Charts Section -->
-<div class="row mb-5">
-    <div class="col-lg-12">
-        <h2 class="section-title"><i class="bi bi-fire"></i> Top Movers Charts</h2>
-    </div>
-
-    <div class="col-lg-12">
-        <div class="chart-container">
-            <h5 class="mb-3"><i class="bi bi-graph-up"></i> Daily % Change</h5>
-            <canvas id="mover-performance-chart" style="height: 300px;"></canvas>
-        </div>
-    </div>
-</div>
-
-<!-- Watchlist Charts Section -->
-<div class="row mb-5">
-    <div class="col-lg-12">
-        <h2 class="section-title"><i class="bi bi-bookmark-heart"></i> Watchlist Charts</h2>
-    </div>
-
-    <div class="col-lg-12">
-        <div class="chart-container">
-            <h5 class="mb-3"><i class="bi bi-bar-chart"></i> Daily % Change</h5>
-            <canvas id="watchlist-performance-chart" style="height: 300px;"></canvas>
-        </div>
-    </div>
-
-    <div class="col-lg-12">
-        <div class="chart-container">
-            <h5 class="mb-3"><i class="bi bi-doughnut"></i> Investment Scores</h5>
-            <canvas id="mover-scores-chart" style="height: 300px;"></canvas>
-        </div>
-    </div>
-</div>
-
-<!-- Data Tables Section -->
-<div class="row mb-5">
-    <div class="col-lg-12">
-        <h2 class="section-title"><i class="bi bi-table"></i> Data Tables</h2>
-    </div>
-
-    <div class="col-lg-12 mb-4">
+    <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><i class="bi bi-fire"></i> Top Movers Details</div>
-            <div class="card-body">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-fire"></i> Top Movers</h5>
+            </div>
+            <div class="card-body" style="height: 300px;">
+                <canvas id="mover-performance-chart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-bookmark-heart"></i> Watchlist</h5>
+            </div>
+            <div class="card-body" style="height: 300px;">
+                <canvas id="watchlist-performance-chart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scores Chart -->
+<div class="row mb-4">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Investment Scores</h5>
+            </div>
+            <div class="card-body" style="height: 320px;">
+                <canvas id="mover-scores-chart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tables Row -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-fire"></i> Top Movers</h5>
+            </div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
                 <div class="table-responsive">
-                    <table class="table" id="detailedMoversTable">
+                    <table class="table table-sm" id="moversTable">
                         <thead>
                             <tr>
                                 <th>Symbol</th>
-                                <th>Company</th>
                                 <th>Today %</th>
-                                <th>7-Day %</th>
-                                <th>Volatility</th>
                                 <th>Score</th>
-                                <th>Recommendation</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td colspan="7" class="text-center text-muted py-4">
-                                    <div class="spinner-border" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                </td>
-                            </tr>
+                            <tr><td colspan="4" class="text-center text-muted py-2">Run analysis to see data</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
-
-    <div class="col-lg-12">
+    <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><i class="bi bi-bookmark-heart"></i> Watchlist Details</div>
-            <div class="card-body">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-bookmark-heart"></i> Watchlist</h5>
+            </div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
                 <div class="table-responsive">
-                    <table class="table" id="detailedWatchlistTable">
+                    <table class="table table-sm" id="watchlistTable">
                         <thead>
                             <tr>
                                 <th>Symbol</th>
-                                <th>Company</th>
                                 <th>Today %</th>
                                 <th>7-Day %</th>
-                                <th>Current Price</th>
                                 <th>Score</th>
-                                <th>Recommendation</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td colspan="7" class="text-center text-muted py-4">
-                                    <div class="spinner-border" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                </td>
-                            </tr>
+                            <tr><td colspan="5" class="text-center text-muted py-2">Run analysis to see data</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -136,100 +116,101 @@
 
 {% block extra_js %}
 <script>
-    function formatPercent(value) {
-        const sign = value >= 0 ? '+' : '';
-        const color = value >= 0 ? 'positive' : 'negative';
-        return `<span class="${color}">${sign}${value.toFixed(2)}%</span>`;
-    }
+    const Dashboard = {
+        formatPercent(value) {
+            const sign = value >= 0 ? '+' : '';
+            const color = value >= 0 ? 'text-success' : 'text-danger';
+            return `<span class="${color}"><strong>${sign}${value.toFixed(2)}%</strong></span>`;
+        },
 
-    function formatRecommendation(rec) {
-        let className = 'recommendation-badge ';
-        if (rec.includes('BUY')) className += 'recommendation-buy';
-        else if (rec.includes('HOLD')) className += 'recommendation-hold';
-        else className += 'recommendation-avoid';
-        return `<span class="${className}">${rec}</span>`;
-    }
+        formatRec(rec) {
+            if (!rec) return '<span class="badge bg-secondary">HOLD</span>';
+            if (rec.includes('BUY')) return '<span class="badge bg-success">🟢 BUY</span>';
+            if (rec.includes('SELL')) return '<span class="badge bg-danger">🔴 SELL</span>';
+            return '<span class="badge bg-warning">🟡 HOLD</span>';
+        },
 
-    async function loadCharts() {
-        try {
-            // Use Chart.js functions from main.js
-            Charts.loadMoverPerformanceChart('mover-performance-chart');
-            Charts.loadWatchlistPerformanceChart('watchlist-performance-chart');
-            Charts.loadMoverScoresChart('mover-scores-chart');
-        } catch (error) {
-            console.warn('Charts not available yet:', error);
-        }
-    }
+        loadCharts() {
+            try {
+                if (document.getElementById('mover-performance-chart')) {
+                    Charts.loadMoverPerformanceChart('mover-performance-chart');
+                }
+                if (document.getElementById('watchlist-performance-chart')) {
+                    Charts.loadWatchlistPerformanceChart('watchlist-performance-chart');
+                }
+                if (document.getElementById('mover-scores-chart')) {
+                    Charts.loadMoverScoresChart('mover-scores-chart');
+                }
+            } catch (error) {
+                console.warn('Charts not ready yet');
+            }
+        },
 
-    async function loadData() {
-        try {
-            const result = await API.get('/api/data');
-            updateTablesData(result.top_movers, result.watchlist);
-        } catch (error) {
-            console.warn('Table data not available yet:', error.message);
-        }
-    }
+        async loadData() {
+            try {
+                const result = await API.get('/api/data');
+                
+                // Movers table
+                const moversBody = document.querySelector('#moversTable tbody');
+                if (result.top_movers && result.top_movers.length > 0) {
+                    moversBody.innerHTML = result.top_movers.map(m => `
+                        <tr>
+                            <td><strong>${m.Symbol}</strong></td>
+                            <td>${this.formatPercent(m.Momentum || 0)}</td>
+                            <td>${m.Score.toFixed(2)}</td>
+                            <td>${this.formatRec(m.Recommendation)}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    moversBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-2">No data</td></tr>';
+                }
 
-    function updateTablesData(movers, watchlist) {
-        // Movers table
-        const moversBody = document.querySelector('#detailedMoversTable tbody');
-        if (movers && movers.length > 0) {
-            moversBody.innerHTML = movers.map(item => `
-                <tr>
-                    <td><span class="symbol-badge">${item.Symbol}</span></td>
-                    <td>${item.Company || item.Symbol}</td>
-                    <td>${formatPercent(item.Momentum)}</td>
-                    <td>${formatPercent(item['7-Day %'] || 0)}</td>
-                    <td>${(item['Volatility %'] || 0).toFixed(2)}%</td>
-                    <td><strong>${item.Score.toFixed(2)}</strong></td>
-                    <td>${formatRecommendation(item.Recommendation)}</td>
-                </tr>
-            `).join('');
-        } else {
-            moversBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No data available. Run analysis first.</td></tr>';
-        }
+                // Watchlist table
+                const watchlistBody = document.querySelector('#watchlistTable tbody');
+                if (result.watchlist && result.watchlist.length > 0) {
+                    watchlistBody.innerHTML = result.watchlist.map(w => `
+                        <tr>
+                            <td><strong>${w.Symbol}</strong></td>
+                            <td>${this.formatPercent(w['Today %'] || 0)}</td>
+                            <td>${this.formatPercent(w['7-Day %'] || 0)}</td>
+                            <td>${w.Score.toFixed(2)}</td>
+                            <td>${this.formatRec(w.Recommendation)}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    watchlistBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-2">No data</td></tr>';
+                }
+            } catch (error) {
+                console.warn('Data not ready:', error.message);
+            }
+        },
 
-        // Watchlist table
-        const watchlistBody = document.querySelector('#detailedWatchlistTable tbody');
-        if (watchlist && watchlist.length > 0) {
-            watchlistBody.innerHTML = watchlist.map(item => `
-                <tr>
-                    <td><span class="symbol-badge">${item.Symbol}</span></td>
-                    <td>${item.Company || item.Symbol}</td>
-                    <td>${formatPercent(item['Today %'] || 0)}</td>
-                    <td>${formatPercent(item['7-Day %'] || 0)}</td>
-                    <td>$${(item['Current $'] || 0).toFixed(2)}</td>
-                    <td><strong>${(item.Score || 0).toFixed(2)}</strong></td>
-                    <td>${formatRecommendation(item.Recommendation || 'HOLD')}</td>
-                </tr>
-            `).join('');
-        } else {
-            watchlistBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No data available. Run analysis first.</td></tr>';
-        }
-    }
-
-    // Refresh button
-    const refreshBtn = document.getElementById('refreshChartsBtn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => {
+        refresh() {
             showLoading();
-            loadCharts();
-            loadData();
-            setTimeout(hideLoading, 500);
-        });
-    }
+            setTimeout(() => {
+                this.loadCharts();
+                this.loadData();
+                hideLoading();
+            }, 300);
+        }
+    };
 
-    // Load on page load
-    document.addEventListener('DOMContentLoaded', () => {
-        loadCharts();
-        loadData();
+    // Event listeners
+    document.getElementById('runAnalysisBtn').addEventListener('click', () => {
+        Analysis.startAnalysis();
     });
 
-    // Auto-refresh every 5 minutes
-    setInterval(() => {
-        console.log('Auto-refreshing dashboard...');
-        loadCharts();
-        loadData();
-    }, 5 * 60 * 1000);
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+        Dashboard.refresh();
+    });
+
+    // Load on page ready
+    document.addEventListener('DOMContentLoaded', () => {
+        Dashboard.loadCharts();
+        Dashboard.loadData();
+    });
+
+    // Auto-refresh data every 3 minutes
+    setInterval(() => Dashboard.loadData(), 3 * 60 * 1000);
 </script>
 {% endblock %}

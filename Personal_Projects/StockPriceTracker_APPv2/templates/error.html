@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Error - Stock Analysis Dashboard{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 60px 20px;">
+    <h1 style="font-size: 3rem; color: #e74c3c; margin-bottom: 20px;">⚠️ Error</h1>
+    
+    {% if error %}
+        <p style="font-size: 1.2rem; color: #2c3e50; margin-bottom: 30px;">
+            {{ error }}
+        </p>
+    {% else %}
+        <p style="font-size: 1.2rem; color: #2c3e50; margin-bottom: 30px;">
+            Something went wrong. Please try again later.
+        </p>
+    {% endif %}
+    
+    <a href="/" class="btn btn-primary" style="margin-right: 10px;">
+        <i class="bi bi-house"></i> Go Home
+    </a>
+    <a href="/dashboard" class="btn btn-secondary">
+        <i class="bi bi-speedometer2"></i> Go to Dashboard
+    </a>
+</div>
+
+{% endblock %}
