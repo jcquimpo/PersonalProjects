@@ -49,6 +49,12 @@ load_dotenv()
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.config['JSON_SORT_KEYS'] = False
 
+# Production settings
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
+if os.getenv("FLASK_ENV") == "production":
+    app.config['TESTING'] = False
+    app.config['PROPAGATE_EXCEPTIONS'] = True
+
 FINNHUB_API_KEY  = os.getenv("FINNHUB_API_KEY", "")
 FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
 REQUEST_DELAY    = 2.0
@@ -79,10 +85,13 @@ SYMBOL_NAMES = {
     "V":     "Visa Inc.",
 }
 
-if not FINNHUB_API_KEY:
+# For production: allow missing API key but warn
+if not FINNHUB_API_KEY and os.getenv("FLASK_ENV") != "production":
     raise ValueError(
         "FINNHUB_API_KEY not set. Add it to .env file."
     )
+elif not FINNHUB_API_KEY:
+    print("⚠️  WARNING: FINNHUB_API_KEY is not set. Set it in Render environment variables.")
 
 # Global state
 _request_count = 0
@@ -105,12 +114,14 @@ def _get_session():
             status_forcelist=[429, 500, 502, 503, 504],
             allowed_methods=["GET"]
         )
-        adapter = HTTPAdapter(max_retries=retry)
+        adapter = HTTPAdapter(max_retries=retry, pool_connections=10, pool_maxsize=10)
         _session.mount("http://", adapter)
         _session.mount("https://", adapter)
         _session.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         })
+        # Connection pooling timeout
+        _session.timeout = 15
     return _session
 
 
@@ -623,8 +634,18 @@ if __name__ == '__main__':
     print(" 📊 STOCK PRICE TRACKER WEB APPLICATION")
     print("=" * 75)
     print("\n  Starting Flask app...")
-    print("  🌐 Navigate to: http://localhost:5000")
-    print("  📊 Dashboard: http://localhost:5000/dashboard")
+    
+    # Get port from environment or default to 5000
+    port = int(os.getenv("PORT", 5000))
+    debug_mode = os.getenv("FLASK_ENV") == "development"
+    
+    if debug_mode:
+        print("  🌐 Navigate to: http://localhost:{}".format(port))
+        print("  📊 Dashboard: http://localhost:{}/dashboard".format(port))
+    else:
+        print("  Running in production mode on port {}".format(port))
+    
     print("\n  Press Ctrl+C to stop\n")
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Use development server only in development mode
+    app.run(debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False)
