@@ -48,7 +48,6 @@ load_dotenv()
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.config['JSON_SORT_KEYS'] = False
-# app.config['FREEZER_BASE_URL'] = 'https://jcquimpo.github.io/ticker-track/'
 
 FINNHUB_API_KEY  = os.getenv("FINNHUB_API_KEY", "")
 FINNHUB_BASE_URL = "https://finnhub.io/api/v1"

@@ -1,0 +1,117 @@
+.chart-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.chart-wrapper {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.chart-wrapper h3 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: #e2e8f0;
+  border-bottom: 2px solid #334155;
+  padding-bottom: 0.5rem;
+}
+
+.chart-placeholder {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  background: #0f172a;
+  border: 1px dashed #334155;
+  border-radius: 8px;
+}
+
+.chart-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.stat-box {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.stat-box label {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.stat-box value {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #60a5fa;
+}
+
+.stat-box value.high-val {
+  color: #10b981;
+}
+
+.stat-box value.low-val {
+  color: #ef4444;
+}
+
+.stat-box value.avg-val {
+  color: #8b5cf6;
+}
+
+/* Recharts customization */
+.recharts-wrapper {
+  font-family: inherit;
+}
+
+.recharts-text {
+  fill: #cbd5e1;
+}
+
+.recharts-cartesian-axis-tick-value {
+  fill: #94a3b8 !important;
+  font-size: 0.85rem !important;
+}
+
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+
+.recharts-tooltip {
+  background: transparent !important;
+}
+
+.recharts-tooltip-cursor {
+  stroke: #334155;
+  stroke-width: 2;
+}
+
+.recharts-legend-wrapper {
+  padding-top: 1rem;
+}
+
+.recharts-legend-item text {
+  color: #cbd5e1 !important;
+}
+
+@media (max-width: 768px) {
+  .chart-wrapper {
+    padding: 1rem;
+  }
+
+  .chart-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
