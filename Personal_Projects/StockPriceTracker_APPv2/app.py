@@ -224,7 +224,7 @@ def fetch_ohlc(symbol: str, days: int = OHLC_DAYS):
     Uses lazy imports to avoid triggering C-extension builds during simple startup checks.
     """
     _lazy_load_pandas_yfinance_plotly()
-    """Fetch OHLC history."""
+
     if not _is_us_stock(symbol):
         return pd.DataFrame()
     
@@ -244,17 +244,17 @@ def fetch_ohlc(symbol: str, days: int = OHLC_DAYS):
                 auto_adjust=True
             )
             
-                    if df.empty:
-                        return pd.DataFrame()
+            if df.empty:
+                return pd.DataFrame()
 
-                    df = df[["Open", "High", "Low", "Close"]].copy()
-                    df = df[(df["Close"] > MIN_PRICE) & (df["Close"] < MAX_PRICE)]
+            df = df[["Open", "High", "Low", "Close"]].copy()
+            df = df[(df["Close"] > MIN_PRICE) & (df["Close"] < MAX_PRICE)]
 
-                    if df.empty:
-                        return pd.DataFrame()
+            if df.empty:
+                return pd.DataFrame()
 
-                    df.index = pd.to_datetime(df.index).normalize().tz_localize(None)
-                    return df.tail(days)
+            df.index = pd.to_datetime(df.index).normalize().tz_localize(None)
+            return df.tail(days)
             
         except:
             if attempt < max_retries - 1:
